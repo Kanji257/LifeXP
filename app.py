@@ -365,30 +365,33 @@ def render_prompt_session(sd, chains, xp_t, cids_list, daily_t, daily_c,
 st.markdown('<div class="hero-title">🎮 LifeXP</div>', unsafe_allow_html=True)
 st.markdown('<div class="hero-sub">AI · GAMIFIED · SELF-IMPROVEMENT · SYSTEM</div>', unsafe_allow_html=True)
 
-# ── API Key input ──────────────────────────────────────────────────────────────
-with st.expander("🔑 Enter your OpenAI API Key to get started", expanded=not bool(st.session_state.get("api_key",""))):
-    st.markdown("""<div style="font-size:.88rem;color:#9CA3AF;margin-bottom:.6rem;">
-Your key is <strong style="color:#34D399;">never stored</strong> — it lives only in your browser session
-and is wiped when you close the tab. Get a free key at
-<a href="https://platform.openai.com/api-keys" target="_blank" style="color:#60A5FA;">platform.openai.com/api-keys</a>
-</div>""", unsafe_allow_html=True)
-    key_input = st.text_input(
-        "OpenAI API Key",
-        type="password",
-        placeholder="sk-proj-...",
-        value=st.session_state.get("api_key", ""),
-        label_visibility="collapsed",
-        key="api_key_input"
-    )
-    if key_input.strip() != st.session_state.get("api_key", ""):
-        st.session_state.api_key = key_input.strip()
-        st.rerun()
-    if st.session_state.get("api_key"):
-        st.success("✅ API key saved for this session.")
+# ── API Key input — each user enters their own key ────────────────────────────
+if "api_key" not in st.session_state:
+    st.session_state.api_key = ""
 
-if not st.session_state.get("api_key"):
-    st.info("👆 Enter your OpenAI API key above to unlock LifeXP.")
+if not st.session_state.api_key:
+    with st.expander("🔑 Enter your OpenAI API Key to get started", expanded=True):
+        st.markdown("""<div style="font-size:.88rem;color:#9CA3AF;margin-bottom:.6rem;">
+LifeXP uses OpenAI to generate your skill tree and quests. Enter your own API key below —
+it is <strong style="color:#34D399;">never stored</strong> and only lives in your browser session.
+Get a free key at <a href="https://platform.openai.com/api-keys" target="_blank"
+style="color:#60A5FA;">platform.openai.com/api-keys</a>
+</div>""", unsafe_allow_html=True)
+        key_input = st.text_input(
+            "OpenAI API Key",
+            type="password",
+            placeholder="sk-proj-...",
+            label_visibility="collapsed",
+            key="api_key_input"
+        )
+        if key_input.strip():
+            st.session_state.api_key = key_input.strip()
+            st.rerun()
+    st.info("👆 Enter your own OpenAI API key above to unlock LifeXP. It's free to sign up at platform.openai.com")
     st.stop()
+else:
+    # Show a small discreet indicator that key is active
+    pass
 
 # Login bar
 lc1, lc2, lc3 = st.columns([3, 2, 1])
