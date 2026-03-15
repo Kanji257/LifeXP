@@ -17,7 +17,7 @@ from ai_engine import (
 from skill_tree import build_skill_tree, render_skill_tree
 from icons import get_skill_icon
 from feedback import save_feedback, load_feedback, get_stats
-from profile_store import get_profile, save_profile, add_prompt_session
+from profile_store import get_profile, save_profile, add_prompt_session, get_all_usernames
 
 XP_PER_LEVEL = 200
 
@@ -104,7 +104,6 @@ def fresh_session():
         "skill_data": {}, "quest_chains": {}, "daily_tasks": {},
         "daily_checkins": {}, "bonus_quests": [], "generated": False,
         "xp_tracker": {}, "completed_ids": set(), "chat_history": [],
-        "api_key": "",
         "session_id": str(uuid.uuid4()),
         "session_created": datetime.now().strftime("%b %d, %Y"),
         "mastery_shown": False,
@@ -115,6 +114,10 @@ def fresh_session():
 for k, v in fresh_session().items():
     if k not in st.session_state:
         st.session_state[k] = v
+
+# api_key lives separately — never wiped by fresh_session
+if "api_key" not in st.session_state:
+    st.session_state.api_key = ""
 
 if "username" not in st.session_state: st.session_state.username = ""
 if "viewing_prompt_id" not in st.session_state: st.session_state.viewing_prompt_id = None
@@ -369,48 +372,71 @@ st.markdown('<div class="hero-sub">AI · GAMIFIED · SELF-IMPROVEMENT · SYSTEM<
 if "api_key" not in st.session_state:
     st.session_state.api_key = ""
 
-if not st.session_state.api_key:
-    with st.expander("🔑 Enter your OpenAI API Key to get started", expanded=True):
-        st.markdown("""<div style="font-size:.88rem;color:#9CA3AF;margin-bottom:.6rem;">
+# Always render the key input so its value persists in session state
+_key_val = st.session_state.api_key
+
+with st.expander("🔑 OpenAI API Key", expanded=not bool(_key_val)):
+    st.markdown("""<div style="font-size:.88rem;color:#9CA3AF;margin-bottom:.6rem;">
 LifeXP uses OpenAI to generate your skill tree and quests. Enter your own API key below —
 it is <strong style="color:#34D399;">never stored</strong> and only lives in your browser session.
 Get a free key at <a href="https://platform.openai.com/api-keys" target="_blank"
 style="color:#60A5FA;">platform.openai.com/api-keys</a>
 </div>""", unsafe_allow_html=True)
-        key_input = st.text_input(
-            "OpenAI API Key",
-            type="password",
-            placeholder="sk-proj-...",
-            label_visibility="collapsed",
-            key="api_key_input"
-        )
-        if key_input.strip():
-            st.session_state.api_key = key_input.strip()
-            st.rerun()
-    st.info("👆 Enter your own OpenAI API key above to unlock LifeXP. It's free to sign up at platform.openai.com")
+    typed_key = st.text_input(
+        "OpenAI API Key",
+        type="password",
+        placeholder="sk-proj-...",
+        label_visibility="collapsed",
+        key="api_key_field"
+    )
+    if typed_key.strip():
+        st.session_state.api_key = typed_key.strip()
+        _key_val = st.session_state.api_key
+    if _key_val:
+        st.success("✅ API key active for this session.")
+    if st.button("Save Key ➜", key="save_key_btn") and typed_key.strip():
+        st.session_state.api_key = typed_key.strip()
+        st.rerun()
+
+if not st.session_state.api_key:
+    st.info("👆 Enter your OpenAI API key above to unlock LifeXP. Get one free at platform.openai.com")
     st.stop()
-else:
-    # Show a small discreet indicator that key is active
-    pass
 
 # Login bar
 lc1, lc2, lc3 = st.columns([3, 2, 1])
 with lc1:
     if not st.session_state.username:
         ni = st.text_input("name", label_visibility="collapsed",
-                           placeholder="Enter your name to save progress (e.g. Karan)",
+                           placeholder="Enter a unique username to save progress",
                            key="name_input")
         if st.button("SAVE PROFILE ➜", key="save_prof"):
             if ni.strip():
-                st.session_state.username = ni.strip()
-                st.rerun()
+                entered = ni.strip()
+                existing_users = get_all_usernames()
+                if entered.lower() in [u.lower() for u in existing_users]:
+                    st.error(f'❌ Username **"{entered}"** is already taken. Please choose a different one.')
+                else:
+                    st.session_state.username = entered
+                    st.rerun()
+            else:
+                st.warning("Please enter a username first.")
     else:
-        st.markdown(f"""<div style="background:linear-gradient(135deg,#1A1A2E,#12122A);
+        col_a, col_b = st.columns([3, 1])
+        with col_a:
+            st.markdown(f"""<div style="background:linear-gradient(135deg,#1A1A2E,#12122A);
 border:1px solid #3A3A6A;border-radius:10px;padding:.42rem 1rem;
 display:inline-flex;align-items:center;gap:.7rem;">
   <span style="color:#A78BFA;font-family:'Orbitron',sans-serif;font-size:.66rem;">LOGGED IN</span>
   <span style="color:#34D399;font-weight:600;">👤 {st.session_state.username}</span>
 </div>""", unsafe_allow_html=True)
+        with col_b:
+            if st.button("Log out", key="logout_btn"):
+                saved_key = st.session_state.api_key
+                for k, v in fresh_session().items():
+                    st.session_state[k] = v
+                st.session_state.api_key = saved_key
+                st.session_state.username = ""
+                st.rerun()
 
 # ══════════════════════════════════════════════════════════════════════════════
 # TABS
@@ -490,8 +516,10 @@ with tab_play:
         with gc2:
             if st.button("NEXT: PERSONALISE MY PLAN ➜", use_container_width=True, key="start_btn"):
                 if goal_input.strip():
+                    saved_key = st.session_state.api_key
                     for k, v in fresh_session().items():
                         st.session_state[k] = v
+                    st.session_state.api_key = saved_key  # preserve key
                     st.session_state.goal_input = goal_input.strip()
                     with st.spinner("🧠 Building your personalised quiz..."):
                         st.session_state.quiz_questions = generate_quiz_questions(goal_input.strip(), api_key=st.session_state.api_key)
@@ -630,8 +658,10 @@ display:flex;gap:1.5rem;flex-wrap:wrap;align-items:center;">
         rc1, rc2, rc3 = st.columns([1, 2, 1])
         with rc2:
             if st.button("🔄 START NEW GOAL", use_container_width=True, key="reset_btn"):
+                saved_key = st.session_state.api_key
                 for k, v in fresh_session().items():
                     st.session_state[k] = v
+                st.session_state.api_key = saved_key  # preserve key across resets
                 st.rerun()
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -753,9 +783,12 @@ display:flex;gap:2rem;flex-wrap:wrap;align-items:center;">
                         prof["prompts"] = []
                         prof["total_xp"] = 0
                         save_profile(st.session_state.username, prof)
-                        # Also wipe the current live session
+                        saved_key = st.session_state.api_key
+                        saved_user = st.session_state.username
                         for k, v in fresh_session().items():
                             st.session_state[k] = v
+                        st.session_state.api_key = saved_key
+                        st.session_state.username = saved_user
                         st.session_state.confirm_reset = False
                         st.success("Profile reset. Starting fresh! 🔄")
                         st.rerun()
