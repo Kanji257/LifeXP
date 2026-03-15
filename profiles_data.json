@@ -1,0 +1,505 @@
+{
+  "Karan Prabuvel": {
+    "username": "Karan Prabuvel",
+    "created": "Mar 15, 2026",
+    "prompts": [
+      {
+        "id": "d2ba560b-014b-4822-b405-bf2601f93cbf",
+        "goal": "I want to fix my sleep schedule",
+        "quiz_answers": {
+          "How many hours of sleep do you typically get on average each night?": "6-8 hours",
+          "What time do you usually go to bed?": "10 PM - Midnight",
+          "What do you think is your biggest challenge in fixing your sleep schedule?": "Staying up late due to distractions",
+          "On average, how much time can you commit each day to improving your sleep schedule?": "15-30 minutes",
+          "How often do you feel rested when you wake up?": "Most of the time"
+        },
+        "user_level": "Beginner",
+        "skill_data": {
+          "Sleep Hygiene": [
+            "Establish a consistent bedtime",
+            "Limit screen time before bed",
+            "Create a relaxing bedtime routine"
+          ],
+          "Environment Optimization": [
+            "Adjust room temperature",
+            "Reduce noise and light exposure"
+          ],
+          "Mindfulness Techniques": [
+            "Practice relaxation exercises",
+            "Use sleep meditation apps"
+          ]
+        },
+        "quest_chains": {
+          "Establish a consistent bedtime": [
+            {
+              "task": "Track your current bedtime for one week using a sleep journal or app.",
+              "difficulty": "Starter",
+              "xp": 30,
+              "order": 1,
+              "id": "Establish a consistent bedtime_0",
+              "completed": false
+            },
+            {
+              "task": "Set a reminder to start winding down 30 minutes before your desired bedtime nightly for one week.",
+              "difficulty": "Easy",
+              "xp": 50,
+              "order": 2,
+              "id": "Establish a consistent bedtime_1",
+              "completed": false
+            },
+            {
+              "task": "Establish a consistent bedtime by going to bed at the same time three nights in a row this week.",
+              "difficulty": "Easy",
+              "xp": 70,
+              "order": 3,
+              "id": "Establish a consistent bedtime_2",
+              "completed": false
+            },
+            {
+              "task": "Create a calming pre-sleep routine (like reading or meditation) and follow it consistently for five nights.",
+              "difficulty": "Medium",
+              "xp": 100,
+              "order": 4,
+              "id": "Establish a consistent bedtime_3",
+              "completed": false
+            },
+            {
+              "task": "Limit screen time (phones, computers, TV) to no more than 30 minutes before bed for an entire week.",
+              "difficulty": "Hard",
+              "xp": 140,
+              "order": 5,
+              "id": "Establish a consistent bedtime_4",
+              "completed": false
+            },
+            {
+              "task": "Maintain a consistent bedtime for at least two weeks, ensuring you wake up feeling rested every day.",
+              "difficulty": "Master",
+              "xp": 200,
+              "order": 6,
+              "id": "Establish a consistent bedtime_5",
+              "completed": false
+            }
+          ],
+          "Limit screen time before bed": [
+            {
+              "task": "Set a reminder on your phone to start winding down 30 minutes before bed. Use this time to put away screens and engage in a relaxing activity.",
+              "difficulty": "Starter",
+              "xp": 30,
+              "order": 1,
+              "id": "Limit screen time before bed_0",
+              "completed": false
+            },
+            {
+              "task": "For one week, commit to turning off all screens (phones, tablets, TVs) at least 30 minutes before bedtime. Keep a journal to note how you feel each morning.",
+              "difficulty": "Easy",
+              "xp": 50,
+              "order": 2,
+              "id": "Limit screen time before bed_1",
+              "completed": false
+            },
+            {
+              "task": "Create a calming bedtime routine that lasts 15 minutes each night without screens. This could include reading, meditating, or light stretching. Stick to this routine for one week.",
+              "difficulty": "Easy",
+              "xp": 70,
+              "order": 3,
+              "id": "Limit screen time before bed_2",
+              "completed": false
+            },
+            {
+              "task": "Challenge yourself to extend the screen-free time before bed to 45 minutes for two weeks. Continue to journal your experiences and note any improvements in your sleep quality.",
+              "difficulty": "Medium",
+              "xp": 100,
+              "order": 4,
+              "id": "Limit screen time before bed_3",
+              "completed": false
+            },
+            {
+              "task": "Experiment with replacing your usual evening screen time with a new relaxing activity (like journaling or listening to calming music) for a full month, documenting your feelings about the change.",
+              "difficulty": "Hard",
+              "xp": 140,
+              "order": 5,
+              "id": "Limit screen time before bed_4",
+              "completed": false
+            },
+            {
+              "task": "Master your sleep hygiene by maintaining a consistent screen-free bedtime routine for two consecutive months, while also implementing progressive changes to your overall sleep environment (like blackout curtains or white noise). Share your success and techniques with the app community.",
+              "difficulty": "Master",
+              "xp": 200,
+              "order": 6,
+              "id": "Limit screen time before bed_5",
+              "completed": false
+            }
+          ],
+          "Create a relaxing bedtime routine": [
+            {
+              "task": "Identify and write down three distractions that keep you up late. Reflect on why they are appealing.",
+              "difficulty": "Starter",
+              "xp": 30,
+              "order": 1,
+              "id": "Create a relaxing bedtime routine_0",
+              "completed": false
+            },
+            {
+              "task": "Set a daily alarm for 30 minutes before your desired bedtime to start winding down. Use this time to relax and disconnect from screens.",
+              "difficulty": "Easy",
+              "xp": 50,
+              "order": 2,
+              "id": "Create a relaxing bedtime routine_1",
+              "completed": false
+            },
+            {
+              "task": "Create a simple 3-step relaxing bedtime routine (e.g., reading, meditation, light stretching) and practice it for 5 consecutive nights.",
+              "difficulty": "Easy",
+              "xp": 70,
+              "order": 3,
+              "id": "Create a relaxing bedtime routine_2",
+              "completed": false
+            },
+            {
+              "task": "Experiment with one new relaxation technique (like deep breathing or aromatherapy) and incorporate it into your routine for at least one week.",
+              "difficulty": "Medium",
+              "xp": 100,
+              "order": 4,
+              "id": "Create a relaxing bedtime routine_3",
+              "completed": false
+            },
+            {
+              "task": "Limit screen time (phones, computers, TV) to 30 minutes before bed, and replace that time with your bedtime routine for two weeks.",
+              "difficulty": "Hard",
+              "xp": 140,
+              "order": 5,
+              "id": "Create a relaxing bedtime routine_4",
+              "completed": false
+            },
+            {
+              "task": "Design a personalized bedtime routine that includes at least five different activities you find relaxing, and follow it consistently for a month. Share your experience and adjustments made.",
+              "difficulty": "Master",
+              "xp": 200,
+              "order": 6,
+              "id": "Create a relaxing bedtime routine_5",
+              "completed": false
+            }
+          ],
+          "Adjust room temperature": [
+            {
+              "task": "Set your room temperature to a comfortable level (between 60-67\u00b0F) before bedtime for one week.",
+              "difficulty": "Starter",
+              "xp": 30,
+              "order": 1,
+              "id": "Adjust room temperature_0",
+              "completed": false
+            },
+            {
+              "task": "Track your sleep quality for a week, noting how the room temperature affects your rest in a journal or app.",
+              "difficulty": "Easy",
+              "xp": 50,
+              "order": 2,
+              "id": "Adjust room temperature_1",
+              "completed": false
+            },
+            {
+              "task": "Experiment with adjusting the room temperature by 1-2 degrees on different nights and record your sleep quality and how you feel upon waking.",
+              "difficulty": "Easy",
+              "xp": 70,
+              "order": 3,
+              "id": "Adjust room temperature_2",
+              "completed": false
+            },
+            {
+              "task": "Create a comfortable sleep environment by decluttering your bedroom and optimizing your bedding for temperature control (e.g., using breathable sheets).",
+              "difficulty": "Medium",
+              "xp": 100,
+              "order": 4,
+              "id": "Adjust room temperature_3",
+              "completed": false
+            },
+            {
+              "task": "Establish a nighttime routine that includes adjusting the room temperature and reducing distractions (like screens) for at least 30 minutes before bed, and maintain it for two weeks.",
+              "difficulty": "Hard",
+              "xp": 140,
+              "order": 5,
+              "id": "Adjust room temperature_4",
+              "completed": false
+            },
+            {
+              "task": "Master your sleep environment by conducting a full week of sleep assessments, adjusting temperature based on your observations, and sharing your findings and strategies with the community for feedback.",
+              "difficulty": "Master",
+              "xp": 200,
+              "order": 6,
+              "id": "Adjust room temperature_5",
+              "completed": false
+            }
+          ],
+          "Reduce noise and light exposure": [
+            {
+              "task": "Identify and list three distractions in your bedroom that could be affecting your sleep quality.",
+              "difficulty": "Starter",
+              "xp": 30,
+              "order": 1,
+              "id": "Reduce noise and light exposure_0",
+              "completed": false
+            },
+            {
+              "task": "Implement a 'no screens' rule for 30 minutes before bedtime, and document how it affects your sleep quality.",
+              "difficulty": "Easy",
+              "xp": 50,
+              "order": 2,
+              "id": "Reduce noise and light exposure_1",
+              "completed": false
+            },
+            {
+              "task": "Use blackout curtains or an eye mask to block light for at least three nights, and reflect on any changes in your sleep experience.",
+              "difficulty": "Easy",
+              "xp": 70,
+              "order": 3,
+              "id": "Reduce noise and light exposure_2",
+              "completed": false
+            },
+            {
+              "task": "Introduce white noise or calming sounds to your sleep environment for one week and note any improvements in sleep satisfaction.",
+              "difficulty": "Medium",
+              "xp": 100,
+              "order": 4,
+              "id": "Reduce noise and light exposure_3",
+              "completed": false
+            },
+            {
+              "task": "Evaluate and adjust the room temperature to find your optimal sleeping temperature, maintaining this for two weeks and reporting your findings.",
+              "difficulty": "Hard",
+              "xp": 140,
+              "order": 5,
+              "id": "Reduce noise and light exposure_4",
+              "completed": false
+            },
+            {
+              "task": "Create a comprehensive sleep environment checklist incorporating light, noise, and comfort adjustments; apply it consistently for a full month and track your overall sleep quality.",
+              "difficulty": "Master",
+              "xp": 200,
+              "order": 6,
+              "id": "Reduce noise and light exposure_5",
+              "completed": false
+            }
+          ],
+          "Practice relaxation exercises": [
+            {
+              "task": "Practice deep breathing exercises for 5 minutes before bed to help reduce distractions and wind down.",
+              "difficulty": "Starter",
+              "xp": 30,
+              "order": 1,
+              "id": "Practice relaxation exercises_0",
+              "completed": false
+            },
+            {
+              "task": "Increase your deep breathing practice to 10 minutes before bed, and add a quick body scan to check for tension.",
+              "difficulty": "Easy",
+              "xp": 50,
+              "order": 2,
+              "id": "Practice relaxation exercises_1",
+              "completed": false
+            },
+            {
+              "task": "Incorporate a 10-minute guided meditation session into your bedtime routine, focusing on relaxation.",
+              "difficulty": "Easy",
+              "xp": 70,
+              "order": 3,
+              "id": "Practice relaxation exercises_2",
+              "completed": false
+            },
+            {
+              "task": "Dedicate 15 minutes to a progressive muscle relaxation technique each night for one week to enhance your relaxation skills.",
+              "difficulty": "Medium",
+              "xp": 100,
+              "order": 4,
+              "id": "Practice relaxation exercises_3",
+              "completed": false
+            },
+            {
+              "task": "Create a personalized bedtime routine that includes 20 minutes of various relaxation exercises (e.g., deep breathing, meditation, and muscle relaxation) and follow it for 2 weeks.",
+              "difficulty": "Hard",
+              "xp": 140,
+              "order": 5,
+              "id": "Practice relaxation exercises_4",
+              "completed": false
+            },
+            {
+              "task": "Host a virtual relaxation workshop for friends or family, teaching them the relaxation exercises you\u2019ve mastered, demonstrating your understanding and commitment to the practice.",
+              "difficulty": "Master",
+              "xp": 200,
+              "order": 6,
+              "id": "Practice relaxation exercises_5",
+              "completed": false
+            }
+          ],
+          "Use sleep meditation apps": [
+            {
+              "task": "Download a sleep meditation app and explore its features for 15 minutes.",
+              "difficulty": "Starter",
+              "xp": 30,
+              "order": 1,
+              "id": "Use sleep meditation apps_0",
+              "completed": false
+            },
+            {
+              "task": "Use the sleep meditation app for a 10-minute session each night before bed, for 5 consecutive nights.",
+              "difficulty": "Easy",
+              "xp": 50,
+              "order": 2,
+              "id": "Use sleep meditation apps_1",
+              "completed": false
+            },
+            {
+              "task": "Increase your meditation session to 15 minutes each night for 7 consecutive nights and reflect on how you feel each morning.",
+              "difficulty": "Easy",
+              "xp": 70,
+              "order": 3,
+              "id": "Use sleep meditation apps_2",
+              "completed": false
+            },
+            {
+              "task": "Incorporate a sleep journal along with your meditation. Write down your thoughts about the meditations and any changes in sleep quality for 2 weeks.",
+              "difficulty": "Medium",
+              "xp": 100,
+              "order": 4,
+              "id": "Use sleep meditation apps_3",
+              "completed": false
+            },
+            {
+              "task": "Experiment with different meditation techniques within the app and choose your top 2 favorites. Use them on alternating nights for 14 nights.",
+              "difficulty": "Hard",
+              "xp": 140,
+              "order": 5,
+              "id": "Use sleep meditation apps_4",
+              "completed": false
+            },
+            {
+              "task": "Create a personalized sleep routine that includes your favorite meditation techniques and a wind-down period. Stick to this routine for 30 days and track the improvements in your sleep quality.",
+              "difficulty": "Master",
+              "xp": 200,
+              "order": 6,
+              "id": "Use sleep meditation apps_5",
+              "completed": false
+            }
+          ]
+        },
+        "daily_tasks": {
+          "Establish a consistent bedtime": {
+            "task": "Spend 15 minutes before bed to unwind and disconnect from distractions, such as screens or stimulating activities, to reinforce your bedtime routine.",
+            "xp": 25
+          },
+          "Limit screen time before bed": {
+            "task": "Spend 15-30 minutes before bed engaging in a relaxing activity that does not involve screens, such as reading a book, practicing meditation, or doing gentle stretches.",
+            "xp": 25
+          },
+          "Create a relaxing bedtime routine": {
+            "task": "Spend 15 minutes each evening winding down with a calming activity, such as reading a book or practicing mindfulness meditation, to reinforce your relaxing bedtime routine.",
+            "xp": 25
+          },
+          "Practice relaxation exercises": {
+            "task": "Spend 15 minutes each evening practicing a relaxation exercise before bedtime, such as deep breathing or progressive muscle relaxation, to enhance your ability to unwind and prepare for sleep.",
+            "xp": 25
+          },
+          "Use sleep meditation apps": {
+            "task": "Spend 15 minutes each evening using a sleep meditation app to help wind down and prepare for sleep, focusing on relaxation techniques and guided meditations.",
+            "xp": 25
+          },
+          "Adjust room temperature": {
+            "task": "Spend 15 minutes each evening adjusting the room temperature to your preferred sleep setting to ensure optimal comfort before bed.",
+            "xp": 25
+          },
+          "Reduce noise and light exposure": {
+            "task": "Spend 15 minutes each evening preparing your sleep environment by dimming lights, using blackout curtains, and eliminating noise distractions to ensure a restful atmosphere.",
+            "xp": 25
+          }
+        },
+        "daily_checkins": {},
+        "bonus_quests": [
+          {
+            "task": "Create a relaxing bedtime routine that includes 15 minutes of reading a physical book (no screens) before bed for 7 consecutive nights.",
+            "difficulty": "Bonus",
+            "xp": 200,
+            "id": "bonus_0"
+          },
+          {
+            "task": "Spend 30 minutes on a digital detox for one week, turning off all screens (phones, tablets, computers) at least one hour before your planned bedtime.",
+            "difficulty": "Bonus",
+            "xp": 250,
+            "id": "bonus_1"
+          },
+          {
+            "task": "Try a new sleep environment: spend one night sleeping in a different room or rearranging your bedroom to promote better sleep (e.g., blackout curtains, aromatherapy).",
+            "difficulty": "Bonus",
+            "xp": 300,
+            "id": "bonus_2"
+          }
+        ],
+        "xp_tracker": {
+          "Establish a consistent bedtime": 590,
+          "Limit screen time before bed": 590,
+          "Create a relaxing bedtime routine": 590,
+          "Adjust room temperature": 590,
+          "Reduce noise and light exposure": 590,
+          "Practice relaxation exercises": 590,
+          "Use sleep meditation apps": 590,
+          "bonus": 750
+        },
+        "completed_ids": [
+          "Reduce noise and light exposure_1",
+          "Adjust room temperature_1",
+          "Practice relaxation exercises_4",
+          "Limit screen time before bed_3",
+          "Use sleep meditation apps_2",
+          "Practice relaxation exercises_3",
+          "Establish a consistent bedtime_1",
+          "Create a relaxing bedtime routine_5",
+          "Limit screen time before bed_4",
+          "Establish a consistent bedtime_4",
+          "Practice relaxation exercises_0",
+          "Use sleep meditation apps_3",
+          "Use sleep meditation apps_0",
+          "Practice relaxation exercises_2",
+          "Practice relaxation exercises_5",
+          "bonus_0",
+          "Use sleep meditation apps_5",
+          "Adjust room temperature_5",
+          "Use sleep meditation apps_4",
+          "Create a relaxing bedtime routine_3",
+          "Create a relaxing bedtime routine_4",
+          "bonus_2",
+          "Adjust room temperature_2",
+          "Create a relaxing bedtime routine_0",
+          "Reduce noise and light exposure_4",
+          "bonus_1",
+          "Reduce noise and light exposure_2",
+          "Create a relaxing bedtime routine_2",
+          "Adjust room temperature_3",
+          "Use sleep meditation apps_1",
+          "Practice relaxation exercises_1",
+          "Establish a consistent bedtime_0",
+          "Establish a consistent bedtime_5",
+          "Reduce noise and light exposure_0",
+          "Establish a consistent bedtime_2",
+          "Establish a consistent bedtime_3",
+          "Limit screen time before bed_0",
+          "Limit screen time before bed_2",
+          "Reduce noise and light exposure_3",
+          "Adjust room temperature_4",
+          "Adjust room temperature_0",
+          "Limit screen time before bed_5",
+          "Create a relaxing bedtime routine_1",
+          "Reduce noise and light exposure_5",
+          "Limit screen time before bed_1"
+        ],
+        "created": "Mar 15, 2026",
+        "last_updated": "Mar 15, 2026 09:52",
+        "mastered": true
+      }
+    ],
+    "total_xp": 4880
+  },
+  "Karan": {
+    "username": "Karan",
+    "created": "Mar 15, 2026",
+    "prompts": [],
+    "total_xp": 0
+  }
+}
