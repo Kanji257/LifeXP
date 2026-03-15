@@ -17,7 +17,7 @@ from ai_engine import (
 from skill_tree import build_skill_tree, render_skill_tree
 from icons import get_skill_icon
 from feedback import save_feedback, load_feedback, get_stats
-from profile_store import get_profile, save_profile, add_prompt_session, get_all_usernames
+from profile_store import get_profile, save_profile, add_prompt_session, get_all_usernames, register_user, login_user
 
 XP_PER_LEVEL = 200
 
@@ -402,41 +402,81 @@ if not st.session_state.api_key:
     st.info("👆 Enter your OpenAI API key above to unlock LifeXP. Get one free at platform.openai.com")
     st.stop()
 
-# Login bar
-lc1, lc2, lc3 = st.columns([3, 2, 1])
-with lc1:
-    if not st.session_state.username:
-        ni = st.text_input("name", label_visibility="collapsed",
-                           placeholder="Enter a unique username to save progress",
-                           key="name_input")
-        if st.button("SAVE PROFILE ➜", key="save_prof"):
-            if ni.strip():
-                entered = ni.strip()
-                existing_users = get_all_usernames()
-                if entered.lower() in [u.lower() for u in existing_users]:
-                    st.error(f'❌ Username **"{entered}"** is already taken. Please choose a different one.')
+# ── Login / Register ──────────────────────────────────────────────────────────
+if "auth_mode" not in st.session_state:
+    st.session_state.auth_mode = "login"  # "login" or "register"
+
+if not st.session_state.username:
+    st.markdown('<hr class="divider">', unsafe_allow_html=True)
+    auth_c1, auth_c2, auth_c3 = st.columns([1, 2, 1])
+    with auth_c2:
+        # Toggle between login and register
+        mode_c1, mode_c2 = st.columns(2)
+        with mode_c1:
+            if st.button("🔑 Log In", key="mode_login",
+                         use_container_width=True):
+                st.session_state.auth_mode = "login"
+                st.rerun()
+        with mode_c2:
+            if st.button("✨ Register", key="mode_register",
+                         use_container_width=True):
+                st.session_state.auth_mode = "register"
+                st.rerun()
+
+        st.markdown(f"""<div style="text-align:center;font-family:'Orbitron',sans-serif;
+color:#A78BFA;font-size:.78rem;letter-spacing:.08em;margin:.6rem 0;">
+{'LOG IN TO YOUR ACCOUNT' if st.session_state.auth_mode == "login" else 'CREATE AN ACCOUNT'}
+</div>""", unsafe_allow_html=True)
+
+        auth_username = st.text_input("Username", placeholder="Enter your username",
+                                       key="auth_username")
+        auth_password = st.text_input("Password", placeholder="Enter your password",
+                                       type="password", key="auth_password")
+
+        if st.session_state.auth_mode == "login":
+            if st.button("LOG IN ➜", key="login_btn", use_container_width=True):
+                if auth_username.strip() and auth_password.strip():
+                    ok, result = login_user(auth_username.strip(), auth_password.strip())
+                    if ok:
+                        st.session_state.username = result  # exact cased username
+                        st.rerun()
+                    else:
+                        st.error(f"❌ {result}")
                 else:
-                    st.session_state.username = entered
-                    st.rerun()
-            else:
-                st.warning("Please enter a username first.")
-    else:
-        col_a, col_b = st.columns([3, 1])
-        with col_a:
-            st.markdown(f"""<div style="background:linear-gradient(135deg,#1A1A2E,#12122A);
+                    st.warning("Please enter both username and password.")
+        else:
+            if st.button("CREATE ACCOUNT ➜", key="register_btn", use_container_width=True):
+                if auth_username.strip() and auth_password.strip():
+                    ok, msg = register_user(auth_username.strip(), auth_password.strip())
+                    if ok:
+                        st.success(f"✅ Account created! You can now log in.")
+                        st.session_state.auth_mode = "login"
+                        st.rerun()
+                    else:
+                        st.error(f"❌ {msg}")
+                else:
+                    st.warning("Please enter both a username and password.")
+
+    st.markdown('<hr class="divider">', unsafe_allow_html=True)
+else:
+    # Logged in — show name and logout button
+    lc1, lc2 = st.columns([4, 1])
+    with lc1:
+        st.markdown(f"""<div style="background:linear-gradient(135deg,#1A1A2E,#12122A);
 border:1px solid #3A3A6A;border-radius:10px;padding:.42rem 1rem;
 display:inline-flex;align-items:center;gap:.7rem;">
   <span style="color:#A78BFA;font-family:'Orbitron',sans-serif;font-size:.66rem;">LOGGED IN</span>
   <span style="color:#34D399;font-weight:600;">👤 {st.session_state.username}</span>
 </div>""", unsafe_allow_html=True)
-        with col_b:
-            if st.button("Log out", key="logout_btn"):
-                saved_key = st.session_state.api_key
-                for k, v in fresh_session().items():
-                    st.session_state[k] = v
-                st.session_state.api_key = saved_key
-                st.session_state.username = ""
-                st.rerun()
+    with lc2:
+        if st.button("Log out", key="logout_btn"):
+            saved_key = st.session_state.api_key
+            for k, v in fresh_session().items():
+                st.session_state[k] = v
+            st.session_state.api_key = saved_key
+            st.session_state.username = ""
+            st.session_state.auth_mode = "login"
+            st.rerun()
 
 # ══════════════════════════════════════════════════════════════════════════════
 # TABS
