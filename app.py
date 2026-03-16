@@ -120,11 +120,15 @@ for k, v in fresh_session().items():
     if k not in st.session_state:
         st.session_state[k] = v
 
-# Ensure completed_ids is always a set (may be list after JSON round-trip)
+# Ensure correct types after JSON round-trip
 if isinstance(st.session_state.get("completed_ids"), list):
     st.session_state.completed_ids = set(st.session_state.completed_ids)
 if not isinstance(st.session_state.get("completed_ids"), set):
     st.session_state.completed_ids = set()
+if not isinstance(st.session_state.get("daily_tasks"), dict):
+    st.session_state.daily_tasks = {}
+if not isinstance(st.session_state.get("daily_checkins"), dict):
+    st.session_state.daily_checkins = {}
 
 # api_key lives separately — never wiped by fresh_session
 if "api_key" not in st.session_state:
@@ -173,6 +177,13 @@ def _is_prompt_mastered(p: dict) -> bool:
 
 def save_session():
     if not st.session_state.username or not st.session_state.generated: return
+    # Ensure types are correct before saving
+    daily_tasks = st.session_state.daily_tasks
+    if not isinstance(daily_tasks, dict): daily_tasks = {}
+    daily_checkins = st.session_state.daily_checkins
+    if not isinstance(daily_checkins, dict): daily_checkins = {}
+    completed_ids = st.session_state.completed_ids
+    if not isinstance(completed_ids, (set, list)): completed_ids = set()
     add_prompt_session(st.session_state.username, {
         "id": st.session_state.session_id,
         "goal": st.session_state.goal_input,
@@ -180,11 +191,11 @@ def save_session():
         "user_level": st.session_state.user_level,
         "skill_data": st.session_state.skill_data,
         "quest_chains": st.session_state.quest_chains,
-        "daily_tasks": st.session_state.daily_tasks,
-        "daily_checkins": st.session_state.daily_checkins,
+        "daily_tasks": daily_tasks,
+        "daily_checkins": daily_checkins,
         "bonus_quests": st.session_state.bonus_quests,
         "xp_tracker": st.session_state.xp_tracker,
-        "completed_ids": list(st.session_state.completed_ids),
+        "completed_ids": list(completed_ids),
         "created": st.session_state.session_created,
         "last_updated": datetime.now().strftime("%b %d, %Y %H:%M"),
         "mastered": all_mastered(),
