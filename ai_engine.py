@@ -1,16 +1,14 @@
 """
 ai_engine.py — LifeXP AI Engine
-All functions accept an api_key parameter passed from the user's session.
-No key is ever stored — it lives only in the user's browser session.
+All functions accept api_key from user session. Includes graceful error handling.
 """
 
 import json
 import re
-from openai import OpenAI
+from openai import OpenAI, AuthenticationError, RateLimitError, APIError
 
 
 def parse_json(text: str):
-    """Safely parse JSON from LLM response."""
     cleaned = re.sub(r"```(?:json)?", "", text).strip().rstrip("`").strip()
     try:
         return json.loads(cleaned)
@@ -25,12 +23,30 @@ def parse_json(text: str):
 
 
 def get_client(api_key: str) -> OpenAI:
-    """Create an OpenAI client using the user-supplied key."""
     return OpenAI(api_key=api_key)
 
 
+def safe_call(func):
+    """
+    Decorator that wraps AI calls with friendly error handling.
+    Returns (result, error_message). error_message is None on success.
+    """
+    def wrapper(*args, **kwargs):
+        try:
+            return func(*args, **kwargs), None
+        except AuthenticationError:
+            return None, "❌ Invalid API key. Please check your key and try again."
+        except RateLimitError:
+            return None, "❌ Your OpenAI account has no credits. Add credits at platform.openai.com/settings/billing"
+        except APIError as e:
+            return None, f"❌ OpenAI API error: {str(e)[:120]}"
+        except Exception as e:
+            return None, f"❌ Unexpected error: {str(e)[:120]}"
+    return wrapper
+
+
+@safe_call
 def extract_skill_tree(goals: str, api_key: str) -> dict:
-    """Convert free-text goals into a focused skill tree dict."""
     client = get_client(api_key)
     prompt = f"""You are a self-improvement expert building a focused skill tree.
 
@@ -54,8 +70,8 @@ Return ONLY valid JSON:
     return result if isinstance(result, dict) else {}
 
 
+@safe_call
 def generate_quiz_questions(goals: str, api_key: str) -> list:
-    """Dynamically generate 5 quiz questions relevant to the user's specific goals."""
     client = get_client(api_key)
     prompt = f"""You are building a personalisation quiz for a self-improvement app.
 
@@ -69,7 +85,7 @@ Rules:
 - Include one question about current experience level
 - Include one about biggest challenge related to this goal
 - Include one about how much time they can commit per day
-- Options should reveal where the user is NOW, not where they want to be
+- Options should reveal where the user is NOW
 
 Return ONLY valid JSON:
 [
@@ -96,30 +112,23 @@ Return ONLY valid JSON:
     ]
 
 
+@safe_call
 def generate_quest_chain(skill: str, category: str, quiz_answers: dict,
-                         user_level: str, api_key: str) -> list:
-    """Generate a full ordered quest chain (6 quests) for a skill."""
+                          user_level: str, api_key: str) -> list:
     client = get_client(api_key)
-    context_lines = [f"- {k}: {v}" for k, v in quiz_answers.items() if v]
-    context = "\n".join(context_lines) if context_lines else "No additional context."
+    context = "\n".join(f"- {k}: {v}" for k, v in quiz_answers.items() if v)
 
-    prompt = f"""You are designing a progressive quest chain for a gamified self-improvement app.
+    prompt = f"""You are designing a progressive quest chain for LifeXP.
 
 USER PROFILE:
 {context}
-Assessed Experience Level: {user_level}
+Experience Level: {user_level}
 
 Design a progressive quest chain for the skill "{skill}" (category: {category}).
+Generate exactly 6 quests ordered from easiest to hardest.
+Quest 1 should match where the user IS RIGHT NOW.
 
-Rules:
-- Generate exactly 6 quests in order from easiest to hardest
-- Quest 1 should match where the user IS RIGHT NOW based on their profile
-- Each quest should be a meaningful step up from the previous
-- Quests should be concrete, specific daily/weekly actions
-- Later quests (4-6) should be challenging mastery-level tasks
-- The final quest should represent true mastery of this skill
-
-Return ONLY a JSON list ordered from first (easiest) to last (hardest):
+Return ONLY a JSON list:
 [
   {{"task": "Quest description", "difficulty": "Starter", "xp": 30, "order": 1}},
   {{"task": "Quest description", "difficulty": "Easy", "xp": 50, "order": 2}},
@@ -127,9 +136,7 @@ Return ONLY a JSON list ordered from first (easiest) to last (hardest):
   {{"task": "Quest description", "difficulty": "Medium", "xp": 100, "order": 4}},
   {{"task": "Quest description", "difficulty": "Hard", "xp": 140, "order": 5}},
   {{"task": "Quest description", "difficulty": "Master", "xp": 200, "order": 6}}
-]
-
-XP guide: Starter=20-40, Easy=40-80, Medium=80-120, Hard=120-180, Master=180-250"""
+]"""
 
     resp = client.chat.completions.create(
         model="gpt-4o-mini",
@@ -142,7 +149,6 @@ XP guide: Starter=20-40, Easy=40-80, Medium=80-120, Hard=120-180, Master=180-250
             q["id"] = f"{skill}_{i}"
             q["completed"] = False
         return result
-
     return [
         {"task": f"Spend 10 minutes learning about {skill}", "difficulty": "Starter", "xp": 30, "order": 1, "id": f"{skill}_0", "completed": False},
         {"task": f"Practice {skill} for 20 minutes", "difficulty": "Easy", "xp": 50, "order": 2, "id": f"{skill}_1", "completed": False},
@@ -152,23 +158,16 @@ XP guide: Starter=20-40, Easy=40-80, Medium=80-120, Hard=120-180, Master=180-250
     ]
 
 
+@safe_call
 def generate_daily_checkin_task(skill: str, category: str,
                                  quiz_answers: dict, api_key: str) -> dict:
-    """Generate a single daily maintenance task once a skill is mastered."""
     client = get_client(api_key)
-    context_lines = [f"- {k}: {v}" for k, v in quiz_answers.items() if v]
-    context = "\n".join(context_lines)
+    context = "\n".join(f"- {k}: {v}" for k, v in quiz_answers.items() if v)
 
     prompt = f"""A user has fully mastered the skill "{skill}" in category "{category}".
-
-Their profile:
-{context}
-
-Create ONE daily maintenance task they should do every day to maintain and deepen this mastery.
-It should be achievable in under 30 minutes and something they can do every single day.
-
-Return ONLY valid JSON (single object):
-{{"task": "Daily task description", "xp": 25}}"""
+Profile: {context}
+Create ONE daily maintenance task achievable in under 30 minutes.
+Return ONLY valid JSON: {{"task": "Daily task description", "xp": 25}}"""
 
     resp = client.chat.completions.create(
         model="gpt-4o-mini",
@@ -181,19 +180,13 @@ Return ONLY valid JSON (single object):
     return {"task": f"Practise {skill} for 15 minutes", "xp": 25}
 
 
+@safe_call
 def generate_bonus_challenges(goals: str, quiz_answers: dict, api_key: str) -> list:
-    """Generate 3 bonus XP challenges tailored to the goal."""
     client = get_client(api_key)
-    context_lines = [f"- {k}: {v}" for k, v in quiz_answers.items() if v]
-    context = "\n".join(context_lines)
+    context = "\n".join(f"- {k}: {v}" for k, v in quiz_answers.items() if v)
 
-    prompt = f"""Generate 3 bonus stretch challenges for someone whose goal is: "{goals}"
-
-User profile:
-{context}
-
-These should be specific to the goal, slightly outside comfort zone, feel like exciting side quests.
-
+    prompt = f"""Generate 3 bonus stretch challenges for goal: "{goals}"
+Profile: {context}
 Return ONLY a JSON list:
 [
   {{"task": "Bonus challenge", "difficulty": "Bonus", "xp": 200}},
@@ -214,26 +207,18 @@ Return ONLY a JSON list:
     return []
 
 
+@safe_call
 def chat_modify_tree(user_message: str, current_skill_data: dict, goals: str,
                      quiz_answers: dict, user_level: str, api_key: str) -> dict:
-    """Process a chat message and return modifications to the skill tree."""
     client = get_client(api_key)
     tree_summary = json.dumps(current_skill_data, indent=2)
-    context_lines = [f"- {k}: {v}" for k, v in quiz_answers.items() if v]
-    context = "\n".join(context_lines)
+    context = "\n".join(f"- {k}: {v}" for k, v in quiz_answers.items() if v)
 
-    prompt = f"""You are the LifeXP AI assistant helping a user customise their skill tree.
-
-User's goal: "{goals}"
+    prompt = f"""You are the LifeXP AI assistant helping customise a skill tree.
+Goal: "{goals}" | Level: {user_level}
 Profile: {context}
-Level: {user_level}
-
-Current skill tree:
-{tree_summary}
-
+Current tree: {tree_summary}
 User message: "{user_message}"
-
-Interpret what they want (add/remove skill or category, ask a question, get advice).
 
 Return ONLY valid JSON:
 {{

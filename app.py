@@ -15,9 +15,12 @@ from ai_engine import (
     generate_daily_checkin_task, generate_bonus_challenges, chat_modify_tree
 )
 from skill_tree import build_skill_tree, render_skill_tree
+import plotly.graph_objects as go  # noqa — ensures plotly available
 from icons import get_skill_icon
 from feedback import save_feedback, load_feedback, get_stats
-from profile_store import get_profile, save_profile, add_prompt_session, get_all_usernames, register_user, login_user
+from profile_store import (get_profile, save_profile, add_prompt_session, get_all_usernames,
+    register_user, login_user, get_leaderboard, update_streak, get_streak,
+    get_password_hint, log_quest_completion, get_quest_history)
 
 XP_PER_LEVEL = 200
 
@@ -100,6 +103,7 @@ st.markdown("""
 def fresh_session():
     return {
         "goal_input": "", "quiz_questions": [], "quiz_answers": {},
+        "quiz_step": 0,
         "quiz_done": False, "user_level": "Beginner",
         "skill_data": {}, "quest_chains": {}, "daily_tasks": {},
         "daily_checkins": {}, "bonus_quests": [], "generated": False,
@@ -109,6 +113,7 @@ def fresh_session():
         "mastery_shown": False,
         "mastery_dismissed": False,
         "mastery_celebrated_ids": set(),
+        "onboarding_done": False,
     }
 
 for k, v in fresh_session().items():
@@ -173,8 +178,9 @@ def apply_chat_action(result):
             st.session_state.skill_data[category] = []
         if skill not in st.session_state.skill_data[category]:
             st.session_state.skill_data[category].append(skill)
-            st.session_state.quest_chains[skill] = generate_quest_chain(
+            chain_r, _ = generate_quest_chain(
                 skill, category, st.session_state.quiz_answers, st.session_state.user_level, api_key=st.session_state.api_key)
+            st.session_state.quest_chains[skill] = chain_r or []
             st.session_state.xp_tracker[skill] = 0
         return f"✅ Added **{skill}** to **{category}**"
     elif action == "remove_skill" and skill:
@@ -209,8 +215,16 @@ def render_prompt_session(sd, chains, xp_t, cids_list, daily_t, daily_c,
     # Skill tree
     st.markdown("### 🌳 Skill Tree")
     G = build_skill_tree(sd)
-    fig = render_skill_tree(G, sd)
-    st.pyplot(fig, use_container_width=True)
+    # Pass mastery info for golden nodes
+    _mastered_set = {s for sks in sd.values() for s in sks if is_mastered(s, cids, chains)}
+    _quest_prog = {}
+    for _cat, _sks in sd.items():
+        for _s in _sks:
+            _chain = chains.get(_s, [])
+            _done = sum(1 for q in _chain if q["id"] in cids)
+            _quest_prog[_s] = (_done, len(_chain))
+    fig = render_skill_tree(G, sd, mastered_skills=_mastered_set, quest_progress=_quest_prog)
+    st.plotly_chart(fig, use_container_width=True)
     st.markdown('<hr class="divider">', unsafe_allow_html=True)
 
     st.markdown("### ⚔️ Quest Chains")
@@ -247,17 +261,27 @@ def render_prompt_session(sd, chains, xp_t, cids_list, daily_t, daily_c,
                     daily = daily_t.get(skill)
                     if not daily and is_live:
                         with st.spinner(f"Generating daily habit for {skill}..."):
-                            daily = generate_daily_checkin_task(skill, category, quiz_ans, api_key=st.session_state.api_key)
-                        st.session_state.daily_tasks[skill] = daily
-                        save_session()
+                            daily_r, daily_err = generate_daily_checkin_task(skill, category, quiz_ans, api_key=st.session_state.api_key)
+                        if not daily_err and daily_r:
+                            daily = daily_r
+                            st.session_state.daily_tasks[skill] = daily
+                            save_session()
                     if daily:
                         task_txt = daily["task"] if isinstance(daily, dict) else daily
                         dxp = daily.get("xp", 25) if isinstance(daily, dict) else 25
                         checkins = daily_c.get(skill, 0)
+                        # Streak info
+                        streak_info = {"count": 0, "active": False}
+                        if is_live and st.session_state.username and sid:
+                            streak_info = get_streak(st.session_state.username, skill, sid)
+                        sc = streak_info["count"]
+                        fires = "🔥" * min(sc, 5) if sc > 0 else ""
+                        streak_txt = f"{fires} {sc} day streak!" if sc > 1 else ("🔥 1 day streak!" if sc == 1 else "Start your streak today!")
                         st.markdown(f"""<div class="daily-card">
   <div style="font-family:'Orbitron',sans-serif;color:#34D399;font-size:.68rem;margin-bottom:.28rem;">
-    🔁 DAILY HABIT · {checkins} days
+    🔁 DAILY HABIT · {checkins} days total
   </div>
+  <div style="color:#F59E0B;font-size:.8rem;margin-bottom:.3rem;">{streak_txt}</div>
   <div style="font-size:.86rem;margin-bottom:.42rem;">{task_txt}</div>
   <span style="color:#34D399;font-size:.76rem;">+{dxp} XP/day</span>
 </div>""", unsafe_allow_html=True)
@@ -265,6 +289,8 @@ def render_prompt_session(sd, chains, xp_t, cids_list, daily_t, daily_c,
                                 if is_live:
                                     st.session_state.daily_checkins[skill] = checkins + 1
                                     add_xp(skill, dxp)
+                                    if st.session_state.username and sid:
+                                        update_streak(st.session_state.username, skill, sid)
                                     save_session()
                                 elif past_pid and st.session_state.username:
                                     prof = get_profile(st.session_state.username)
@@ -438,16 +464,27 @@ color:#A78BFA;font-size:.78rem;letter-spacing:.08em;margin:.6rem 0;">
                 if auth_username.strip() and auth_password.strip():
                     ok, result = login_user(auth_username.strip(), auth_password.strip())
                     if ok:
-                        st.session_state.username = result  # exact cased username
+                        st.session_state.username = result
                         st.rerun()
                     else:
                         st.error(f"❌ {result}")
                 else:
                     st.warning("Please enter both username and password.")
+            # Forgot password hint
+            if auth_username.strip():
+                hint = get_password_hint(auth_username.strip())
+                if hint:
+                    st.markdown(f'<div style="color:#9CA3AF;font-size:.8rem;margin-top:.4rem;">💡 Hint: <em>{hint}</em></div>', unsafe_allow_html=True)
+                elif "not found" not in login_user(auth_username.strip(), "dummy_check_only")[1].lower() if auth_username.strip() else True:
+                    st.markdown('<div style="color:#6B7280;font-size:.78rem;margin-top:.4rem;">No password hint set for this account.</div>', unsafe_allow_html=True)
         else:
+            auth_hint = st.text_input("Password hint (optional)",
+                                       placeholder="Something only you know...",
+                                       key="auth_hint",
+                                       help="A hint shown if you forget your password. Don't make it too obvious!")
             if st.button("CREATE ACCOUNT ➜", key="register_btn", use_container_width=True):
                 if auth_username.strip() and auth_password.strip():
-                    ok, msg = register_user(auth_username.strip(), auth_password.strip())
+                    ok, msg = register_user(auth_username.strip(), auth_password.strip(), auth_hint.strip() if "auth_hint" in st.session_state else "")
                     if ok:
                         st.success(f"✅ Account created! You can now log in.")
                         st.session_state.auth_mode = "login"
@@ -481,7 +518,48 @@ display:inline-flex;align-items:center;gap:.7rem;">
 # ══════════════════════════════════════════════════════════════════════════════
 # TABS
 # ══════════════════════════════════════════════════════════════════════════════
-tab_play, tab_profile, tab_feedback = st.tabs(["🎮 Play", "👤 My Profile", "⭐ Feedback"])
+# ── Onboarding walkthrough (shown once after first login) ─────────────────
+if st.session_state.username and not st.session_state.get("onboarding_done", False):
+    st.markdown("""
+<div style="background:linear-gradient(135deg,#1A0A2E,#0A1A2E);border:2px solid #6366F1;
+border-radius:16px;padding:1.8rem 2rem;margin-bottom:1.5rem;">
+  <div style="font-family:'Orbitron',sans-serif;font-size:1rem;font-weight:900;
+    background:linear-gradient(135deg,#A78BFA,#60A5FA);-webkit-background-clip:text;
+    -webkit-text-fill-color:transparent;margin-bottom:1rem;">
+    👋 Welcome to LifeXP!
+  </div>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-bottom:1.2rem;">
+    <div style="background:#1A1A2E;border-radius:10px;padding:.9rem 1rem;">
+      <div style="font-size:1.2rem;margin-bottom:.3rem;">🎯</div>
+      <div style="font-weight:600;color:#E0E0F0;font-size:.9rem;margin-bottom:.2rem;">Enter a Goal</div>
+      <div style="color:#9CA3AF;font-size:.82rem;">Type any life goal — get stronger, learn to code, build discipline — anything.</div>
+    </div>
+    <div style="background:#1A1A2E;border-radius:10px;padding:.9rem 1rem;">
+      <div style="font-size:1.2rem;margin-bottom:.3rem;">🧬</div>
+      <div style="font-weight:600;color:#E0E0F0;font-size:.9rem;margin-bottom:.2rem;">Take the Quiz</div>
+      <div style="color:#9CA3AF;font-size:.82rem;">Answer a few quick questions so the AI can tailor your quest difficulty to your level.</div>
+    </div>
+    <div style="background:#1A1A2E;border-radius:10px;padding:.9rem 1rem;">
+      <div style="font-size:1.2rem;margin-bottom:.3rem;">🌳</div>
+      <div style="font-weight:600;color:#E0E0F0;font-size:.9rem;margin-bottom:.2rem;">Get Your Skill Tree</div>
+      <div style="color:#9CA3AF;font-size:.82rem;">The AI builds a personalised skill tree with 6 ordered quests per skill, unlocking one at a time.</div>
+    </div>
+    <div style="background:#1A1A2E;border-radius:10px;padding:.9rem 1rem;">
+      <div style="font-size:1.2rem;margin-bottom:.3rem;">⚔️</div>
+      <div style="font-weight:600;color:#E0E0F0;font-size:.9rem;margin-bottom:.2rem;">Complete Quests & Level Up</div>
+      <div style="color:#9CA3AF;font-size:.82rem;">Earn XP, level up, and unlock daily habits once you master a skill. Build your streak! 🔥</div>
+    </div>
+  </div>
+</div>
+""", unsafe_allow_html=True)
+    ob1, ob2, ob3 = st.columns([1, 2, 1])
+    with ob2:
+        if st.button("🚀 GOT IT, LET'S GO!", key="onboarding_dismiss", use_container_width=True):
+            st.session_state.onboarding_done = True
+            st.rerun()
+    st.markdown("")
+
+tab_play, tab_profile, tab_leaderboard, tab_feedback = st.tabs(["🎮 Play", "👤 My Profile", "🏅 Leaderboard", "⭐ Feedback"])
 
 # ══════════════════════════════════════════════════════════════════════════════
 # TAB: PLAY
@@ -562,43 +640,121 @@ with tab_play:
                     st.session_state.api_key = saved_key  # preserve key
                     st.session_state.goal_input = goal_input.strip()
                     with st.spinner("🧠 Building your personalised quiz..."):
-                        st.session_state.quiz_questions = generate_quiz_questions(goal_input.strip(), api_key=st.session_state.api_key)
+                        quiz_qs, err = generate_quiz_questions(goal_input.strip(), api_key=st.session_state.api_key)
+                    if err:
+                        st.error(err)
+                    else:
+                        st.session_state.quiz_questions = quiz_qs or []
                     st.rerun()
                 else:
                     st.warning("Please enter your goal first!")
 
-    # ── Step 2: Quiz ───────────────────────────────────────────────────────
+    # ── Step 2: Quiz — one question at a time ────────────────────────────────
     if (st.session_state.goal_input and st.session_state.quiz_questions
             and not st.session_state.quiz_done and not st.session_state.generated):
         st.markdown('<hr class="divider">', unsafe_allow_html=True)
-        st.markdown("### 🧬 Personalise Your Plan")
-        st.markdown(f"*Tailoring for: **{st.session_state.goal_input}***")
-        with st.form("quiz_form"):
-            answers = {}
-            for q in st.session_state.quiz_questions:
-                answers[q["question"]] = st.selectbox(
-                    q["question"], q["options"], key=f"q_{q['id']}")
-            extra = st.text_area("Anything else? (optional)", height=55, key="quiz_extra")
-            if st.form_submit_button("⚡ BUILD MY SKILL TREE", use_container_width=True):
-                if extra.strip():
-                    answers["Additional context"] = extra.strip()
-                st.session_state.quiz_answers = answers
-                level = "Beginner"
-                for a in answers.values():
-                    al = str(a).lower()
-                    if any(w in al for w in ["advanced","expert","highly","5+ year"]):
-                        level = "Advanced"; break
-                    elif any(w in al for w in ["intermediate","some experience","few year"]):
-                        level = "Intermediate"; break
-                st.session_state.user_level = level
-                st.session_state.quiz_done = True
-                st.rerun()
+
+        questions = st.session_state.quiz_questions
+        total_q = len(questions) + 1  # +1 for optional context
+        step = st.session_state.quiz_step
+
+        # Progress bar
+        progress_pct = int((step / total_q) * 100)
+        st.markdown(f"""
+<div style="margin-bottom:1.2rem;">
+  <div style="display:flex;justify-content:space-between;margin-bottom:.3rem;">
+    <span style="font-family:'Orbitron',sans-serif;color:#A78BFA;font-size:.72rem;letter-spacing:.08em;">
+      PERSONALISING YOUR PLAN
+    </span>
+    <span style="color:#6B7280;font-size:.78rem;">Question {min(step+1, total_q)} of {total_q}</span>
+  </div>
+  <div class="xp-bar-bg" style="height:6px;">
+    <div class="xp-bar-fill" style="width:{progress_pct}%;height:6px;"></div>
+  </div>
+</div>""", unsafe_allow_html=True)
+
+        if step < len(questions):
+            q = questions[step]
+            question_text = q["question"]
+            options = q["options"]
+
+            # Question card
+            st.markdown(f"""
+<div style="background:linear-gradient(145deg,#1A1A2E,#16213E);border:1px solid #3A2A6A;
+border-radius:16px;padding:2rem 2.5rem;margin-bottom:1.5rem;text-align:center;">
+  <div style="font-size:1.1rem;font-weight:600;color:#E0E0F0;margin-bottom:1.5rem;line-height:1.5;">
+    {question_text}
+  </div>
+</div>""", unsafe_allow_html=True)
+
+            # Answer buttons — 2 per row
+            for row_start in range(0, len(options), 2):
+                row_options = options[row_start:row_start+2]
+                btn_cols = st.columns(len(row_options))
+                for ci, opt in enumerate(row_options):
+                    with btn_cols[ci]:
+                        # Highlight if already answered
+                        already = st.session_state.quiz_answers.get(question_text)
+                        is_selected = already == opt
+                        bg = "linear-gradient(135deg,#312E81,#1E1B4B)" if is_selected else "linear-gradient(145deg,#16162A,#1A1A2E)"
+                        border = "#6366F1" if is_selected else "#2A2A4A"
+                        st.markdown(f"""<div style="background:{bg};border:1px solid {border};
+border-radius:10px;padding:.7rem 1rem;text-align:center;margin-bottom:.4rem;
+font-size:.9rem;color:#E0E0F0;cursor:pointer;">
+{"✓ " if is_selected else ""}{opt}</div>""", unsafe_allow_html=True)
+                        if st.button(opt, key=f"qbtn_{step}_{ci}_{opt[:12]}", use_container_width=True):
+                            st.session_state.quiz_answers[question_text] = opt
+                            st.session_state.quiz_step = step + 1
+                            st.rerun()
+
+        elif step == len(questions):
+            # Final step: optional context
+            st.markdown("""
+<div style="background:linear-gradient(145deg,#1A1A2E,#16213E);border:1px solid #3A2A6A;
+border-radius:16px;padding:2rem 2.5rem;margin-bottom:1.5rem;text-align:center;">
+  <div style="font-size:1.1rem;font-weight:600;color:#E0E0F0;margin-bottom:.5rem;">
+    Anything else we should know? <span style="color:#6B7280;font-size:.85rem;">(optional)</span>
+  </div>
+  <div style="color:#6B7280;font-size:.85rem;">Current routine, injuries, schedule constraints...</div>
+</div>""", unsafe_allow_html=True)
+
+            extra = st.text_area("Extra context", label_visibility="collapsed",
+                                  placeholder="e.g. I train 3x a week, I have a bad knee...",
+                                  height=80, key="quiz_extra")
+
+            qc1, qc2, qc3 = st.columns([1, 2, 1])
+            with qc2:
+                if st.button("⚡ BUILD MY SKILL TREE", use_container_width=True, key="quiz_final_btn"):
+                    if extra.strip():
+                        st.session_state.quiz_answers["Additional context"] = extra.strip()
+                    # Determine level
+                    level = "Beginner"
+                    for a in st.session_state.quiz_answers.values():
+                        al = str(a).lower()
+                        if any(w in al for w in ["advanced","expert","highly","5+ year"]):
+                            level = "Advanced"; break
+                        elif any(w in al for w in ["intermediate","some experience","few year"]):
+                            level = "Intermediate"; break
+                    st.session_state.user_level = level
+                    st.session_state.quiz_done = True
+                    st.rerun()
+
+        # Back button (if not on first question)
+        if step > 0:
+            back_c1, back_c2, back_c3 = st.columns([1, 2, 1])
+            with back_c1:
+                if st.button("← Back", key="quiz_back"):
+                    st.session_state.quiz_step = step - 1
+                    st.rerun()
 
     # ── Step 3: Generate ───────────────────────────────────────────────────
     if st.session_state.quiz_done and not st.session_state.generated:
         with st.spinner("🧠 Building your skill tree..."):
-            skill_data = extract_skill_tree(st.session_state.goal_input, api_key=st.session_state.api_key)
-        if not skill_data:
+            skill_data, err = extract_skill_tree(st.session_state.goal_input, api_key=st.session_state.api_key)
+        if err:
+            st.error(err)
+            st.session_state.quiz_done = False
+        elif not skill_data:
             st.error("⚠️ Couldn't parse skills. Try rephrasing.")
             st.session_state.quiz_done = False
         else:
@@ -606,12 +762,14 @@ with tab_play:
             all_s = [(c, s) for c, sks in skill_data.items() for s in sks]
             prog = st.progress(0, text="⚔️ Building quest chains...")
             for i, (c, s) in enumerate(all_s):
-                st.session_state.quest_chains[s] = generate_quest_chain(
+                chain_result, chain_err = generate_quest_chain(
                     s, c, st.session_state.quiz_answers, st.session_state.user_level, api_key=st.session_state.api_key)
+                st.session_state.quest_chains[s] = chain_result or []
                 st.session_state.xp_tracker[s] = 0
                 prog.progress((i + 1) / (len(all_s) + 1), text=f"⚔️ Crafting {s}...")
-            st.session_state.bonus_quests = generate_bonus_challenges(
+            bonus_result, _ = generate_bonus_challenges(
                 st.session_state.goal_input, st.session_state.quiz_answers, api_key=st.session_state.api_key)
+            st.session_state.bonus_quests = bonus_result or []
             prog.progress(1.0); prog.empty()
             st.session_state.generated = True
             save_session()
@@ -682,11 +840,13 @@ display:flex;gap:1.5rem;flex-wrap:wrap;align-items:center;">
             user_msg = chat_input.strip()
             st.session_state.chat_history.append({"role": "user", "text": user_msg})
             with st.spinner("🤖 Thinking..."):
-                result = chat_modify_tree(user_msg, st.session_state.skill_data,
+                result, chat_err = chat_modify_tree(user_msg, st.session_state.skill_data,
                                           st.session_state.goal_input,
                                           st.session_state.quiz_answers,
                                           st.session_state.user_level,
                                           api_key=st.session_state.api_key)
+            if chat_err:
+                result = {"reply": chat_err, "action": "none"}
             tree_change = apply_chat_action(result) if result.get("action") != "none" else None
             st.session_state.chat_history.append({
                 "role": "ai", "text": result.get("reply", "Done!"),
@@ -842,8 +1002,8 @@ display:flex;gap:2rem;flex-wrap:wrap;align-items:center;">
                     st.rerun()
 
         # Sub-tabs
-        pt1, pt2, pt3, pt4 = st.tabs(
-            ["🏆 Mastered", "⚡ Active Goals", "🔁 Daily Trackers", "📋 All Quests"])
+        pt1, pt2, pt3, pt4, pt5 = st.tabs(
+            ["🏆 Mastered", "⚡ Active Goals", "🔁 Daily Trackers", "📋 All Quests", "📜 Quest History"])
 
         with pt1:
             if not mastered_ps:
@@ -1039,9 +1199,106 @@ font-size:.68rem;margin-bottom:.25rem;">{mc_icon} {'MASTERED' if is_mastered_pro
                                         f'{"✅" if done else "🔒"} {q.get("task","")[:55]}</div>',
                                         unsafe_allow_html=True)
 
+        with pt5:
+            history = get_quest_history(st.session_state.username) if st.session_state.username else []
+            if not history:
+                st.markdown("""<div style="text-align:center;padding:2rem;color:#6B7280;">
+  <div style="font-size:2rem;margin-bottom:.6rem;">📜</div>
+  No completed quests yet — start working towards your goals!
+</div>""", unsafe_allow_html=True)
+            else:
+                total_logged = len(history)
+                total_xp_logged = sum(h.get("xp", 0) for h in history)
+                st.markdown(f"*{total_logged} quests completed · {total_xp_logged:,} XP earned*")
+                st.markdown("")
+
+                # Group by date
+                from collections import defaultdict
+                by_date = defaultdict(list)
+                for entry in history:
+                    by_date[entry.get("date","Unknown")].append(entry)
+
+                diff_colors_h = {"Starter":"#60A5FA","Easy":"#34D399","Medium":"#FCD34D",
+                                  "Hard":"#F87171","Master":"#C084FC","Bonus":"#F59E0B"}
+
+                for date_label, entries in by_date.items():
+                    date_xp = sum(e.get("xp",0) for e in entries)
+                    st.markdown(f"""<div style="font-family:'Orbitron',sans-serif;color:#6B7280;
+font-size:.7rem;letter-spacing:.08em;margin:.9rem 0 .4rem;
+border-bottom:1px solid #1E1E3A;padding-bottom:.3rem;">
+📅 {date_label} &nbsp;·&nbsp; +{date_xp} XP
+</div>""", unsafe_allow_html=True)
+                    for entry in entries:
+                        diff = entry.get("difficulty","Easy")
+                        dc = diff_colors_h.get(diff, "#9CA3AF")
+                        skill = entry.get("skill","")
+                        task = entry.get("task","")
+                        xp = entry.get("xp", 0)
+                        time_str = entry.get("time","")
+                        icon = get_skill_icon(skill)
+                        st.markdown(f"""<div style="display:flex;align-items:start;gap:.8rem;
+padding:.55rem .7rem;margin-bottom:.25rem;background:#1A1A2E;border-radius:8px;
+border-left:3px solid {dc};">
+  <div style="flex:1;">
+    <div style="font-size:.78rem;color:{dc};font-family:'Orbitron',sans-serif;margin-bottom:.15rem;">
+      {icon} {skill} &nbsp;·&nbsp; {diff}
+    </div>
+    <div style="font-size:.86rem;color:#E0E0F0;">✅ {task}</div>
+  </div>
+  <div style="text-align:right;white-space:nowrap;">
+    <div style="color:#FCD34D;font-size:.82rem;font-family:'Orbitron',sans-serif;">+{xp} XP</div>
+    <div style="color:#4B5563;font-size:.72rem;">{time_str}</div>
+  </div>
+</div>""", unsafe_allow_html=True)
+
 # ══════════════════════════════════════════════════════════════════════════════
-# TAB: FEEDBACK
+# TAB: LEADERBOARD + FEEDBACK
 # ══════════════════════════════════════════════════════════════════════════════
+with tab_leaderboard:
+    st.markdown("### 🏅 Leaderboard")
+    st.markdown("*Top players ranked by total XP earned across all goals.*")
+    st.markdown("")
+
+    board = get_leaderboard(10)
+    if not board:
+        st.markdown("""<div style="text-align:center;padding:3rem;color:#6B7280;">
+  <div style="font-size:2rem;margin-bottom:.6rem;">🏅</div>
+  No players yet — be the first to earn XP!
+</div>""", unsafe_allow_html=True)
+    else:
+        # Highlight current user
+        current_user = st.session_state.get("username","")
+        for i, player in enumerate(board):
+            rank = i + 1
+            is_me = player["username"].lower() == current_user.lower() if current_user else False
+            medal = {1:"🥇", 2:"🥈", 3:"🥉"}.get(rank, f"#{rank}")
+            bg = "linear-gradient(135deg,#1A1A05,#1A1A00)" if rank == 1 else                  ("linear-gradient(135deg,#0A0A1A,#16161A)" if rank == 2 else                  ("linear-gradient(135deg,#1A0A05,#1A1005)" if rank == 3 else                  ("linear-gradient(135deg,#1A1A2E,#12122A)" if is_me else "linear-gradient(145deg,#1A1A2E,#16213E)")))
+            border = "#F59E0B" if rank == 1 else                      ("#9CA3AF" if rank == 2 else                      ("#B45309" if rank == 3 else                      ("#6366F1" if is_me else "#2A2A4A")))
+            you_tag = ' <span style="background:#312E81;color:#C4B5FD;padding:1px 8px;border-radius:10px;font-size:.68rem;font-family:Orbitron,sans-serif;">YOU</span>' if is_me else ""
+            xp_bar_pct = min(int((player["total_xp"] / max(board[0]["total_xp"], 1)) * 100), 100)
+            st.markdown(f"""<div style="background:{bg};border:1px solid {border};
+border-radius:12px;padding:1rem 1.4rem;margin-bottom:.6rem;">
+  <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:.5rem;">
+    <div style="display:flex;align-items:center;gap:.8rem;">
+      <span style="font-size:1.4rem;">{medal}</span>
+      <div>
+        <span style="font-size:1rem;font-weight:600;color:#E0E0F0;">{player["username"]}</span>{you_tag}
+        <div style="color:#6B7280;font-size:.76rem;">
+          Level {player["level"]} · {player["mastered_count"]} goal{"s" if player["mastered_count"] != 1 else ""} mastered
+        </div>
+      </div>
+    </div>
+    <div style="text-align:right;">
+      <div style="font-family:'Orbitron',sans-serif;font-size:1rem;color:#FCD34D;">
+        {player["total_xp"]:,} XP
+      </div>
+    </div>
+  </div>
+  <div class="xp-bar-bg" style="margin-top:.5rem;">
+    <div class="xp-bar-fill" style="width:{xp_bar_pct}%;"></div>
+  </div>
+</div>""", unsafe_allow_html=True)
+
 with tab_feedback:
     st.markdown("### ⭐ Rate LifeXP")
     st.markdown("*Enjoying the app? Leave a rating — your feedback helps us improve.*")

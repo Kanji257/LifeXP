@@ -1,0 +1,373 @@
+{
+  "Karan_Prabuvel": {
+    "username": "Karan_Prabuvel",
+    "password_hash": "cdce4d3aea26c03c928dbd73702631acac89abe4e8ea5afeb40080040df3044c",
+    "created": "Mar 16, 2026",
+    "prompts": [
+      {
+        "id": "0722a6b6-ccd3-44d4-bed5-1c89f75def95",
+        "goal": "i want to fix my sleep schedule",
+        "quiz_answers": {
+          "How many hours of sleep do you typically get on a weeknight?": "6-8 hours",
+          "What time do you usually go to bed on weekdays?": "12 AM - 2 AM",
+          "What do you find to be your biggest challenge in fixing your sleep schedule?": "Staying up late due to distractions",
+          "How much time can you realistically commit each day to work on your sleep schedule?": "Less than 15 minutes",
+          "How often do you feel tired or groggy during the day?": "Sometimes",
+          "Additional context": "i go to bed at 12am and it takes me not too long to fall asleep after that, but i want to sleep earlier"
+        },
+        "user_level": "Beginner",
+        "skill_data": {
+          "Sleep Hygiene": [
+            "Establish a consistent bedtime",
+            "Create a relaxing pre-sleep routine"
+          ],
+          "Sleep Environment": [
+            "Optimize bedroom comfort",
+            "Limit exposure to screens before bed"
+          ],
+          "Lifestyle Adjustments": [
+            "Reduce caffeine intake in the afternoon",
+            "Incorporate regular physical activity"
+          ]
+        },
+        "quest_chains": {
+          "Establish a consistent bedtime": [
+            {
+              "task": "Track your current bedtimes for a week to understand your sleep patterns.",
+              "difficulty": "Starter",
+              "xp": 30,
+              "order": 1,
+              "id": "Establish a consistent bedtime_0",
+              "completed": false
+            },
+            {
+              "task": "Set a bedtime reminder on your phone for 15 minutes before your desired sleep time.",
+              "difficulty": "Easy",
+              "xp": 50,
+              "order": 2,
+              "id": "Establish a consistent bedtime_1",
+              "completed": false
+            },
+            {
+              "task": "Choose one distraction (like phone or TV) to turn off 30 minutes before your targeted bedtime for a whole week.",
+              "difficulty": "Easy",
+              "xp": 70,
+              "order": 3,
+              "id": "Establish a consistent bedtime_2",
+              "completed": false
+            },
+            {
+              "task": "Reduce your bedtime by 15 minutes for one week and maintain that new time.",
+              "difficulty": "Medium",
+              "xp": 100,
+              "order": 4,
+              "id": "Establish a consistent bedtime_3",
+              "completed": false
+            },
+            {
+              "task": "Establish a relaxing bedtime routine (e.g., reading or meditation) for 10-15 minutes before sleep for two weeks.",
+              "difficulty": "Hard",
+              "xp": 140,
+              "order": 5,
+              "id": "Establish a consistent bedtime_4",
+              "completed": false
+            },
+            {
+              "task": "Achieve a consistent bedtime of no later than 11 PM for three consecutive weeks while maintaining your new routine.",
+              "difficulty": "Master",
+              "xp": 200,
+              "order": 6,
+              "id": "Establish a consistent bedtime_5",
+              "completed": false
+            }
+          ],
+          "Create a relaxing pre-sleep routine": [
+            {
+              "task": "Identify one distraction that keeps you up late and take note of it. Aim to reduce this distraction by at least 10 minutes each night.",
+              "difficulty": "Starter",
+              "xp": 30,
+              "order": 1,
+              "id": "Create a relaxing pre-sleep routine_0",
+              "completed": false
+            },
+            {
+              "task": "Establish a consistent bedtime for the next week (set an alarm to remind you 15 minutes before). Aim to go to bed at the same time every night.",
+              "difficulty": "Easy",
+              "xp": 50,
+              "order": 2,
+              "id": "Create a relaxing pre-sleep routine_1",
+              "completed": false
+            },
+            {
+              "task": "Create a wind-down activity (like reading or meditating) that lasts at least 10 minutes before bed. Practice this activity every night for a week.",
+              "difficulty": "Easy",
+              "xp": 70,
+              "order": 3,
+              "id": "Create a relaxing pre-sleep routine_2",
+              "completed": false
+            },
+            {
+              "task": "Limit screen time (TV, phone, computer) to 30 minutes before your new bedtime for 5 consecutive nights. Keep a journal of how you feel each morning.",
+              "difficulty": "Medium",
+              "xp": 100,
+              "order": 4,
+              "id": "Create a relaxing pre-sleep routine_3",
+              "completed": false
+            },
+            {
+              "task": "Design a personalized pre-sleep routine that includes at least three relaxing activities (such as a warm bath, light stretching, or calming music). Follow this routine nightly for one week.",
+              "difficulty": "Hard",
+              "xp": 140,
+              "order": 5,
+              "id": "Create a relaxing pre-sleep routine_4",
+              "completed": false
+            },
+            {
+              "task": "Master your new sleep routine by successfully going to bed at your target time for 14 consecutive nights. Reflect on the changes you notice in your sleep quality and daytime energy levels.",
+              "difficulty": "Master",
+              "xp": 200,
+              "order": 6,
+              "id": "Create a relaxing pre-sleep routine_5",
+              "completed": false
+            }
+          ],
+          "Optimize bedroom comfort": [
+            {
+              "task": "Declutter your bedroom by removing at least 5 items that are not used for sleeping or relaxation.",
+              "difficulty": "Starter",
+              "xp": 30,
+              "order": 1,
+              "id": "Optimize bedroom comfort_0",
+              "completed": false
+            },
+            {
+              "task": "Create a calming bedtime routine by spending 15 minutes each evening winding down, involving activities like reading or meditating.",
+              "difficulty": "Easy",
+              "xp": 50,
+              "order": 2,
+              "id": "Optimize bedroom comfort_1",
+              "completed": false
+            },
+            {
+              "task": "Adjust your bedroom temperature to a comfortable level (ideally between 60-67\u00b0F or 15-19\u00b0C) before going to bed for a week.",
+              "difficulty": "Easy",
+              "xp": 70,
+              "order": 3,
+              "id": "Optimize bedroom comfort_2",
+              "completed": false
+            },
+            {
+              "task": "Experiment with blackout curtains or eye masks to eliminate light in your bedroom for at least 4 nights this week.",
+              "difficulty": "Medium",
+              "xp": 100,
+              "order": 4,
+              "id": "Optimize bedroom comfort_3",
+              "completed": false
+            },
+            {
+              "task": "Limit screen time in your bedroom by designating a 'no electronics' zone or time for 5 consecutive evenings.",
+              "difficulty": "Hard",
+              "xp": 140,
+              "order": 5,
+              "id": "Optimize bedroom comfort_4",
+              "completed": false
+            },
+            {
+              "task": "Create a personalized sleep sanctuary by rearranging your bedroom layout, optimizing for comfort, and incorporating calming colors or decor. Maintain this setup for 30 days.",
+              "difficulty": "Master",
+              "xp": 200,
+              "order": 6,
+              "id": "Optimize bedroom comfort_5",
+              "completed": false
+            }
+          ],
+          "Limit exposure to screens before bed": [
+            {
+              "task": "Set a reminder on your phone to start winding down for bed at 11:30 PM. Use a gentle tone or a calming notification sound.",
+              "difficulty": "Starter",
+              "xp": 30,
+              "order": 1,
+              "id": "Limit exposure to screens before bed_0",
+              "completed": false
+            },
+            {
+              "task": "Turn off all screens (phone, computer, TV) 30 minutes before your bedtime. Use this time to read a book or practice a relaxing activity.",
+              "difficulty": "Easy",
+              "xp": 50,
+              "order": 2,
+              "id": "Limit exposure to screens before bed_1",
+              "completed": false
+            },
+            {
+              "task": "Replace one screen-based activity with a non-screen activity for an additional 30 minutes before bedtime, such as meditating or journaling.",
+              "difficulty": "Easy",
+              "xp": 70,
+              "order": 3,
+              "id": "Limit exposure to screens before bed_2",
+              "completed": false
+            },
+            {
+              "task": "Create a relaxing bedtime routine that you follow every night for at least a week. Include at least three non-screen activities like stretching, reading, or listening to calming music.",
+              "difficulty": "Medium",
+              "xp": 100,
+              "order": 4,
+              "id": "Limit exposure to screens before bed_3",
+              "completed": false
+            },
+            {
+              "task": "Reduce your overall screen time during the day by 1 hour. Use this time for activities that promote relaxation and wind down more effectively at night.",
+              "difficulty": "Hard",
+              "xp": 140,
+              "order": 5,
+              "id": "Limit exposure to screens before bed_4",
+              "completed": false
+            },
+            {
+              "task": "Maintain a consistent sleep schedule by going to bed no later than 11 PM and waking up the same time every day for 2 weeks, ensuring you limit screen exposure in the last hour before sleep.",
+              "difficulty": "Master",
+              "xp": 200,
+              "order": 6,
+              "id": "Limit exposure to screens before bed_5",
+              "completed": false
+            }
+          ],
+          "Reduce caffeine intake in the afternoon": [
+            {
+              "task": "Track your caffeine intake for one week. Write down every caffeinated drink you consume in the afternoon.",
+              "difficulty": "Starter",
+              "xp": 30,
+              "order": 1,
+              "id": "Reduce caffeine intake in the afternoon_0",
+              "completed": false
+            },
+            {
+              "task": "Identify and eliminate one source of caffeine in the afternoon this week (e.g., switching from coffee to herbal tea).",
+              "difficulty": "Easy",
+              "xp": 50,
+              "order": 2,
+              "id": "Reduce caffeine intake in the afternoon_1",
+              "completed": false
+            },
+            {
+              "task": "Replace caffeinated drinks with non-caffeinated options for two consecutive afternoons this week.",
+              "difficulty": "Easy",
+              "xp": 70,
+              "order": 3,
+              "id": "Reduce caffeine intake in the afternoon_2",
+              "completed": false
+            },
+            {
+              "task": "Reduce your total caffeine intake by half during the afternoon for an entire week.",
+              "difficulty": "Medium",
+              "xp": 100,
+              "order": 4,
+              "id": "Reduce caffeine intake in the afternoon_3",
+              "completed": false
+            },
+            {
+              "task": "Go caffeine-free in the afternoon for one full week, focusing on alternatives like water or decaffeinated drinks.",
+              "difficulty": "Hard",
+              "xp": 140,
+              "order": 5,
+              "id": "Reduce caffeine intake in the afternoon_4",
+              "completed": false
+            },
+            {
+              "task": "Maintain a caffeine-free afternoon schedule for a month, and write a reflection on how it has impacted your sleep and energy levels.",
+              "difficulty": "Master",
+              "xp": 200,
+              "order": 6,
+              "id": "Reduce caffeine intake in the afternoon_5",
+              "completed": false
+            }
+          ],
+          "Incorporate regular physical activity": [
+            {
+              "task": "Take a 10-minute walk after dinner to unwind and incorporate light physical activity into your evening routine.",
+              "difficulty": "Starter",
+              "xp": 30,
+              "order": 1,
+              "id": "Incorporate regular physical activity_0",
+              "completed": false
+            },
+            {
+              "task": "Add a 15-minute stretching or yoga session to your morning routine, aiming to do this at least 3 times this week.",
+              "difficulty": "Easy",
+              "xp": 50,
+              "order": 2,
+              "id": "Incorporate regular physical activity_1",
+              "completed": false
+            },
+            {
+              "task": "Engage in a 20-minute workout (could be bodyweight exercises, a home fitness video, or a quick run) at least 2 times this week.",
+              "difficulty": "Easy",
+              "xp": 70,
+              "order": 3,
+              "id": "Incorporate regular physical activity_2",
+              "completed": false
+            },
+            {
+              "task": "Increase your activity by incorporating 30 minutes of moderate exercise (like brisk walking, cycling, or dancing) at least 3 times this week.",
+              "difficulty": "Medium",
+              "xp": 100,
+              "order": 4,
+              "id": "Incorporate regular physical activity_3",
+              "completed": false
+            },
+            {
+              "task": "Join a local fitness class or group activity (like yoga, martial arts, or team sports) and commit to attending at least once a week for a month.",
+              "difficulty": "Hard",
+              "xp": 140,
+              "order": 5,
+              "id": "Incorporate regular physical activity_4",
+              "completed": false
+            },
+            {
+              "task": "Create a balanced weekly exercise plan that includes a mix of cardio, strength training, and flexibility exercises, and follow it consistently for one month.",
+              "difficulty": "Master",
+              "xp": 200,
+              "order": 6,
+              "id": "Incorporate regular physical activity_5",
+              "completed": false
+            }
+          ]
+        },
+        "daily_tasks": {},
+        "daily_checkins": {},
+        "bonus_quests": [
+          {
+            "task": "Create a 'Wind Down' Routine: Dedicate 15 minutes before bed to a calming activity like reading, meditating, or journaling. Stick to this routine for a week to signal to your body that it's time to sleep earlier.",
+            "difficulty": "Bonus",
+            "xp": 200,
+            "id": "bonus_0"
+          },
+          {
+            "task": "Digital Curfew: Set a digital curfew for yourself where all screens (phone, computer, TV) turn off by 11 PM. Use the last hour before bed for relaxing activities instead. Track your adherence for a week.",
+            "difficulty": "Bonus",
+            "xp": 250,
+            "id": "bonus_1"
+          },
+          {
+            "task": "Sleep Challenge: Try setting your bedtime earlier by 15 minutes each night until you reach your ideal sleep time. Document how you feel each morning during this transition for a week.",
+            "difficulty": "Bonus",
+            "xp": 300,
+            "id": "bonus_2"
+          }
+        ],
+        "xp_tracker": {
+          "Establish a consistent bedtime": 0,
+          "Create a relaxing pre-sleep routine": 0,
+          "Optimize bedroom comfort": 0,
+          "Limit exposure to screens before bed": 0,
+          "Reduce caffeine intake in the afternoon": 0,
+          "Incorporate regular physical activity": 0
+        },
+        "completed_ids": [],
+        "created": "Mar 16, 2026",
+        "last_updated": "Mar 16, 2026 10:53",
+        "mastered": false
+      }
+    ],
+    "total_xp": 0
+  }
+}

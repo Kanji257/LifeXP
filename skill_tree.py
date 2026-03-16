@@ -1,14 +1,10 @@
 """
-skill_tree.py — LifeXP skill tree rendering.
-Fixed: legend placed in separate axes below the tree (no overlap), clean labels.
+skill_tree.py — LifeXP interactive skill tree using Plotly.
+Nodes glow gold when mastered. Hover shows skill name and quest progress.
 """
 
 import networkx as nx
-import matplotlib
-matplotlib.use("Agg")
-import matplotlib.pyplot as plt
-import matplotlib.patches as mpatches
-import matplotlib.gridspec as gridspec
+import plotly.graph_objects as go
 
 CATEGORY_COLORS = {
     "Physical":   "#FF6B6B",
@@ -19,7 +15,8 @@ CATEGORY_COLORS = {
     "Creative":   "#FFB347",
     "Default":    "#B0BEC5",
 }
-ROOT_COLOR = "#555577"
+ROOT_COLOR = "#7C6A9A"
+MASTERED_COLOR = "#F59E0B"
 
 
 def build_skill_tree(skill_data: dict) -> nx.DiGraph:
@@ -33,7 +30,7 @@ def build_skill_tree(skill_data: dict) -> nx.DiGraph:
         for skill in skills:
             skill_node = f"SKILL_{category}_{skill}"
             short = skill if len(skill) <= 14 else skill[:12] + ".."
-            G.add_node(skill_node, label=short, node_type="skill", category=category)
+            G.add_node(skill_node, label=short, node_type="skill", category=category, full_name=skill)
             G.add_edge(cat_node, skill_node)
     return G
 
@@ -53,82 +50,137 @@ def _hierarchy_pos(G, root, width=4.0, vert_gap=0.5):
     return pos
 
 
-def render_skill_tree(G: nx.DiGraph, skill_data: dict) -> plt.Figure:
+def render_skill_tree(G: nx.DiGraph, skill_data: dict,
+                       mastered_skills: set = None,
+                       quest_progress: dict = None) -> go.Figure:
+    """
+    Render an interactive Plotly skill tree.
+    mastered_skills: set of skill names that are mastered (glow gold)
+    quest_progress: {skill_name: (done, total)} for hover tooltip
+    """
+    if mastered_skills is None:
+        mastered_skills = set()
+    if quest_progress is None:
+        quest_progress = {}
+
     root = "LIFE"
     total_skills = sum(len(s) for s in skill_data.values())
-    n_cats = len(skill_data)
-
-    fig_w = max(12, total_skills * 1.9)
-    # Extra height at bottom for the legend row
-    fig_h = max(6, n_cats * 1.8) + 1.2
-
     tree_width = max(3.5, total_skills * 0.9)
-    pos = _hierarchy_pos(G, root, width=tree_width, vert_gap=0.52)
+    pos = _hierarchy_pos(G, root, width=tree_width, vert_gap=0.55)
 
-    # Two rows: tree on top, legend strip at bottom
-    fig = plt.figure(figsize=(fig_w, fig_h), facecolor="#0F0F1A")
-    gs = gridspec.GridSpec(
-        2, 1,
-        height_ratios=[fig_h - 1.2, 1.2],
-        hspace=0.05,
-        figure=fig,
+    # Build edge traces
+    edge_x, edge_y = [], []
+    for u, v in G.edges():
+        x0, y0 = pos[u]; x1, y1 = pos[v]
+        edge_x += [x0, x1, None]
+        edge_y += [y0, y1, None]
+
+    edge_trace = go.Scatter(
+        x=edge_x, y=edge_y,
+        mode="lines",
+        line=dict(width=1.5, color="#334466"),
+        hoverinfo="none",
     )
 
-    ax = fig.add_subplot(gs[0])
-    ax_legend = fig.add_subplot(gs[1])
-    ax.set_facecolor("#0F0F1A")
-    ax_legend.set_facecolor("#0F0F1A")
-    ax_legend.axis("off")
+    # Build node traces — separate by type for different styling
+    node_groups = {"root": [], "category": [], "skill_normal": [], "skill_mastered": []}
 
-    # Node styling
-    node_colors, node_sizes, labels = [], [], {}
     for node in G.nodes():
         data = G.nodes[node]
         ntype = data.get("node_type", "skill")
-        labels[node] = data.get("label", node)
+        x, y = pos[node]
+        label = data.get("label", node)
+        full_name = data.get("full_name", label)
+        category = data.get("category", "Default")
+
         if ntype == "root":
-            node_colors.append(ROOT_COLOR)
-            node_sizes.append(2800)
+            node_groups["root"].append((x, y, label, "LifeXP Root", ROOT_COLOR, 28))
         elif ntype == "category":
-            cat = data.get("category", "Default")
-            node_colors.append(CATEGORY_COLORS.get(cat, CATEGORY_COLORS["Default"]))
-            node_sizes.append(2000)
+            color = CATEGORY_COLORS.get(category, CATEGORY_COLORS["Default"])
+            node_groups["category"].append((x, y, label, f"Category: {category}", color, 22))
         else:
-            cat = data.get("category", "Default")
-            node_colors.append(CATEGORY_COLORS.get(cat, CATEGORY_COLORS["Default"]))
-            node_sizes.append(1500)
+            is_mastered = full_name in mastered_skills
+            done, total = quest_progress.get(full_name, (0, 0))
+            hover = f"{full_name}<br>{'✨ MASTERED' if is_mastered else f'{done}/{total} quests'}"
+            color = MASTERED_COLOR if is_mastered else CATEGORY_COLORS.get(category, CATEGORY_COLORS["Default"])
+            group = "skill_mastered" if is_mastered else "skill_normal"
+            node_groups[group].append((x, y, label, hover, color, 16))
 
-    nx.draw_networkx_edges(G, pos, ax=ax, edge_color="#334466", arrows=False, width=1.5, alpha=0.7)
-    nx.draw_networkx_nodes(G, pos, ax=ax, node_color=node_colors, node_size=node_sizes, alpha=0.92)
+    traces = [edge_trace]
 
-    root_nodes  = {n: labels[n] for n in G.nodes() if G.nodes[n].get("node_type") == "root"}
-    cat_nodes   = {n: labels[n] for n in G.nodes() if G.nodes[n].get("node_type") == "category"}
-    skill_nodes = {n: labels[n] for n in G.nodes() if G.nodes[n].get("node_type") == "skill"}
-    nx.draw_networkx_labels(G, pos, labels=root_nodes,  ax=ax, font_size=9,  font_color="white", font_weight="bold")
-    nx.draw_networkx_labels(G, pos, labels=cat_nodes,   ax=ax, font_size=8,  font_color="white", font_weight="bold")
-    nx.draw_networkx_labels(G, pos, labels=skill_nodes, ax=ax, font_size=7,  font_color="white")
+    group_configs = {
+        "root":          dict(size=32, symbol="circle", line_width=2, line_color="#A78BFA", opacity=0.95),
+        "category":      dict(size=24, symbol="circle", line_width=1.5, line_color="white", opacity=0.9),
+        "skill_normal":  dict(size=18, symbol="circle", line_width=1, line_color="white", opacity=0.85),
+        "skill_mastered":dict(size=20, symbol="star", line_width=2, line_color="#FCD34D", opacity=1.0),
+    }
 
-    ax.set_title("LifeXP Skill Tree", color="white", fontsize=13, fontweight="bold",
-                 pad=10, fontfamily="monospace")
-    ax.axis("off")
+    for group_name, nodes in node_groups.items():
+        if not nodes:
+            continue
+        cfg = group_configs[group_name]
+        xs = [n[0] for n in nodes]
+        ys = [n[1] for n in nodes]
+        labels = [n[2] for n in nodes]
+        hovers = [n[3] for n in nodes]
+        colors = [n[4] for n in nodes]
 
-    # Legend in the separate bottom strip — horizontal, centred
-    patches = [
-        mpatches.Patch(color=CATEGORY_COLORS.get(cat, CATEGORY_COLORS["Default"]), label=cat)
-        for cat in skill_data.keys()
-    ]
-    ax_legend.legend(
-        handles=patches,
-        loc="center",
-        ncol=min(len(patches), 6),   # up to 6 per row
-        facecolor="#1A1A2E",
-        edgecolor="#2A2A4A",
-        labelcolor="white",
-        fontsize=9,
-        framealpha=0.9,
-        borderpad=0.7,
-        columnspacing=1.2,
+        traces.append(go.Scatter(
+            x=xs, y=ys,
+            mode="markers+text",
+            marker=dict(
+                size=cfg["size"],
+                color=colors,
+                symbol=cfg["symbol"],
+                line=dict(width=cfg["line_width"], color=cfg["line_color"]),
+                opacity=cfg["opacity"],
+            ),
+            text=labels,
+            textposition="bottom center" if group_name != "root" else "middle center",
+            textfont=dict(
+                size=9 if group_name == "skill_normal" or group_name == "skill_mastered" else 10,
+                color="white",
+                family="monospace",
+            ),
+            hovertext=hovers,
+            hoverinfo="text",
+            hoverlabel=dict(
+                bgcolor="#1A1A2E",
+                bordercolor="#A78BFA",
+                font=dict(color="white", size=12),
+            ),
+            showlegend=False,
+        ))
+
+    # Legend as annotation boxes
+    annotations = []
+    legend_x = 0.01
+    for cat, color in CATEGORY_COLORS.items():
+        if cat in skill_data:
+            annotations.append(dict(
+                x=legend_x, y=-0.08,
+                xref="paper", yref="paper",
+                text=f"<span style='color:{color}'>■</span> {cat}",
+                showarrow=False,
+                font=dict(color="white", size=10),
+                align="left",
+            ))
+            legend_x += 0.18
+
+    fig = go.Figure(data=traces)
+    fig.update_layout(
+        paper_bgcolor="#0F0F1A",
+        plot_bgcolor="#0F0F1A",
+        margin=dict(l=20, r=20, t=40, b=60),
+        height=420,
+        title=dict(
+            text="LifeXP Skill Tree",
+            font=dict(color="white", size=14, family="monospace"),
+            x=0.5,
+        ),
+        xaxis=dict(visible=False),
+        yaxis=dict(visible=False),
+        annotations=annotations,
+        hovermode="closest",
     )
-
-    fig.tight_layout(pad=1.2)
     return fig
