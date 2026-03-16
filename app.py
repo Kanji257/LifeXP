@@ -260,6 +260,8 @@ def render_prompt_session(sd, chains, xp_t, cids_list, daily_t, daily_c,
                    "Hard":"#F87171","Master":"#C084FC"}
     # Use the correct completed IDs — live session state for active, frozen list for past
     cids = st.session_state.completed_ids if is_live else set(cids_list)
+    # key_prefix guarantees ALL widget keys are unique even if sid is identical
+    key_prefix = f"{'live' if is_live else 'past'}_{sid or 'nosid'}"
 
     # Skill tree
     st.markdown("### 🌳 Skill Tree")
@@ -274,7 +276,7 @@ def render_prompt_session(sd, chains, xp_t, cids_list, daily_t, daily_c,
             _quest_prog[_s] = (_done, len(_chain))
     fig = render_skill_tree(G, sd, mastered_skills=_mastered_set, quest_progress=_quest_prog)
     _chart_prefix = "past" if not is_live else "live"
-    st.plotly_chart(fig, use_container_width=True, key=f"skill_tree_{_chart_prefix}_{sid or 'live'}")
+    st.plotly_chart(fig, use_container_width=True, key=f"skill_tree_{key_prefix}")
     st.markdown('<hr class="divider">', unsafe_allow_html=True)
 
     st.markdown("### ⚔️ Quest Chains")
@@ -346,7 +348,7 @@ def render_prompt_session(sd, chains, xp_t, cids_list, daily_t, daily_c,
   <div style="font-size:.86rem;margin-bottom:.42rem;">{task_txt}</div>
   <span style="color:#34D399;font-size:.76rem;">+{dxp} XP/day</span>
 </div>""", unsafe_allow_html=True)
-                        if st.button(f"✅ Done today +{dxp} XP", key=f"daily_{skill}_{sid}"):
+                        if st.button(f"✅ Done today +{dxp} XP", key=f"daily_{skill}_{key_prefix}"):
                                 if is_live:
                                     st.session_state.daily_checkins[skill] = checkins + 1
                                     add_xp(skill, dxp)
@@ -387,7 +389,7 @@ def render_prompt_session(sd, chains, xp_t, cids_list, daily_t, daily_c,
 {task}<br>
 <span style="color:#6366F1;font-size:.74rem;">+{qxp} XP</span>
 </div>""", unsafe_allow_html=True)
-                            if st.button(f"Complete +{qxp} XP", key=f"btn_{qid}_{sid or 'live'}"):
+                            if st.button(f"Complete +{qxp} XP", key=f"btn_{qid}_{key_prefix}"):
                                     if is_live:
                                         st.session_state.completed_ids.add(qid)
                                         add_xp(skill, qxp)
@@ -438,7 +440,7 @@ def render_prompt_session(sd, chains, xp_t, cids_list, daily_t, daily_c,
                 if done:
                     st.markdown("✅ Completed!")
                 else:
-                    if st.button(f"Complete +{qxp} XP", key=f"btn_{qid}_{sid}"):
+                    if st.button(f"Complete +{qxp} XP", key=f"btn_{qid}_{key_prefix}"):
                         if is_live:
                             st.session_state.completed_ids.add(qid)
                             add_xp("bonus", qxp)
@@ -473,9 +475,9 @@ def render_prompt_session(sd, chains, xp_t, cids_list, daily_t, daily_c,
         with cc1:
             chat_input = st.text_input("chat", label_visibility="collapsed",
                 placeholder='e.g. "Add a Sleep skill" or "Remove Focus"',
-                key=f"chat_input_{sid or 'main'}")
+                key=f"chat_input_{key_prefix}")
         with cc2:
-            send_clicked = st.button("SEND ➜", key=f"send_chat_{sid or 'main'}", use_container_width=True)
+            send_clicked = st.button("SEND ➜", key=f"send_chat_{key_prefix}", use_container_width=True)
 
         if send_clicked and chat_input.strip():
             st.session_state.chat_history.append({"role": "user", "text": chat_input.strip()})
