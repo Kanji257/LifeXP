@@ -20,7 +20,10 @@ from icons import get_skill_icon
 from feedback import save_feedback, load_feedback, get_stats
 from profile_store import (get_profile, save_profile, add_prompt_session, get_all_usernames,
     register_user, login_user, get_leaderboard, update_streak, get_streak,
-    get_password_hint, log_quest_completion, get_quest_history)
+    get_password_hint, log_quest_completion, get_quest_history,
+    set_user_email, get_user_email, get_username_by_email,
+    store_verification_code, verify_code, reset_password)
+from email_service import send_verification_code, generate_code
 
 XP_PER_LEVEL = 200
 
@@ -139,6 +142,10 @@ if "viewing_prompt_id" not in st.session_state: st.session_state.viewing_prompt_
 if "profile_section" not in st.session_state: st.session_state.profile_section = "account"
 if "confirm_delete_id" not in st.session_state: st.session_state.confirm_delete_id = None
 if "confirm_reset" not in st.session_state: st.session_state.confirm_reset = False
+if "email_verify_state" not in st.session_state: st.session_state.email_verify_state = None
+if "reset_pw_state" not in st.session_state: st.session_state.reset_pw_state = None
+if "reset_username" not in st.session_state: st.session_state.reset_username = ""
+if "pending_email" not in st.session_state: st.session_state.pending_email = ""
 
 # ── Helpers ────────────────────────────────────────────────────────────────────
 def get_level_info(xp):
@@ -465,75 +472,161 @@ if not st.session_state.api_key:
     st.info("👆 Enter your OpenAI API key above to unlock LifeXP. Get one free at platform.openai.com")
     st.stop()
 
-# ── Login / Register ──────────────────────────────────────────────────────────
+# ── Login / Register / Password Reset ─────────────────────────────────────────
 if "auth_mode" not in st.session_state:
-    st.session_state.auth_mode = "login"  # "login" or "register"
+    st.session_state.auth_mode = "login"
 
 if not st.session_state.username:
     st.markdown('<hr class="divider">', unsafe_allow_html=True)
     auth_c1, auth_c2, auth_c3 = st.columns([1, 2, 1])
     with auth_c2:
-        # Toggle between login and register
-        mode_c1, mode_c2 = st.columns(2)
-        with mode_c1:
-            if st.button("🔑 Log In", key="mode_login",
-                         use_container_width=True):
-                st.session_state.auth_mode = "login"
-                st.rerun()
-        with mode_c2:
-            if st.button("✨ Register", key="mode_register",
-                         use_container_width=True):
-                st.session_state.auth_mode = "register"
-                st.rerun()
 
-        st.markdown(f"""<div style="text-align:center;font-family:'Orbitron',sans-serif;
-color:#A78BFA;font-size:.78rem;letter-spacing:.08em;margin:.6rem 0;">
-{'LOG IN TO YOUR ACCOUNT' if st.session_state.auth_mode == "login" else 'CREATE AN ACCOUNT'}
-</div>""", unsafe_allow_html=True)
+        # ── Password Reset Flow ──────────────────────────────────────────────
+        if st.session_state.auth_mode == "reset_pw":
+            st.markdown("""<div style="text-align:center;font-family:'Orbitron',sans-serif;
+color:#A78BFA;font-size:.78rem;letter-spacing:.08em;margin:.6rem 0;">RESET PASSWORD</div>""",
+unsafe_allow_html=True)
 
-        auth_username = st.text_input("Username", placeholder="Enter your username",
-                                       key="auth_username")
-        auth_password = st.text_input("Password", placeholder="Enter your password",
-                                       type="password", key="auth_password")
+            reset_state = st.session_state.reset_pw_state  # None | "code_sent" | "verified"
 
-        if st.session_state.auth_mode == "login":
-            if st.button("LOG IN ➜", key="login_btn", use_container_width=True):
-                if auth_username.strip() and auth_password.strip():
-                    ok, result = login_user(auth_username.strip(), auth_password.strip())
-                    if ok:
-                        st.session_state.username = result
-                        st.rerun()
+            if reset_state is None:
+                st.markdown('<div style="color:#9CA3AF;font-size:.85rem;margin-bottom:.6rem;">Enter your email address and we will send you a verification code.</div>', unsafe_allow_html=True)
+                reset_email = st.text_input("Email address", placeholder="your@email.com", key="reset_email_input")
+                if st.button("SEND CODE ➜", key="send_reset_code", use_container_width=True):
+                    if reset_email.strip():
+                        uname = get_username_by_email(reset_email.strip())
+                        if not uname:
+                            st.error("❌ No account found with that email address.")
+                        else:
+                            code = generate_code()
+                            store_verification_code(uname, code, "reset")
+                            ok, err = send_verification_code(reset_email.strip(), code, "reset")
+                            if ok:
+                                st.session_state.reset_username = uname
+                                st.session_state.reset_pw_state = "code_sent"
+                                st.success(f"✅ Code sent to {reset_email.strip()}")
+                                st.rerun()
+                            else:
+                                st.error(f"❌ {err}")
                     else:
-                        st.error(f"❌ {result}")
-                else:
-                    st.warning("Please enter both username and password.")
-            # Forgot password hint
-            if auth_username.strip():
-                hint = get_password_hint(auth_username.strip())
-                if hint:
-                    st.markdown(f'<div style="color:#9CA3AF;font-size:.8rem;margin-top:.4rem;">💡 Hint: <em>{hint}</em></div>', unsafe_allow_html=True)
-                elif "not found" not in login_user(auth_username.strip(), "dummy_check_only")[1].lower() if auth_username.strip() else True:
-                    st.markdown('<div style="color:#6B7280;font-size:.78rem;margin-top:.4rem;">No password hint set for this account.</div>', unsafe_allow_html=True)
-        else:
-            auth_hint = st.text_input("Password hint (optional)",
-                                       placeholder="Something only you know...",
-                                       key="auth_hint",
-                                       help="A hint shown if you forget your password. Don't make it too obvious!")
-            if st.button("CREATE ACCOUNT ➜", key="register_btn", use_container_width=True):
-                if auth_username.strip() and auth_password.strip():
-                    ok, msg = register_user(auth_username.strip(), auth_password.strip(), auth_hint.strip() if "auth_hint" in st.session_state else "")
+                        st.warning("Please enter your email address.")
+
+            elif reset_state == "code_sent":
+                st.success(f"📧 Code sent to your email. Check your inbox.")
+                entered_code = st.text_input("Enter 6-digit code", placeholder="123456", key="reset_code_input", max_chars=6)
+                if st.button("VERIFY CODE ➜", key="verify_reset_code", use_container_width=True):
+                    ok, msg = verify_code(st.session_state.reset_username, entered_code, "reset")
                     if ok:
-                        st.success(f"✅ Account created! You can now log in.")
-                        st.session_state.auth_mode = "login"
+                        st.session_state.reset_pw_state = "verified"
                         st.rerun()
                     else:
                         st.error(f"❌ {msg}")
-                else:
-                    st.warning("Please enter both a username and password.")
+
+            elif reset_state == "verified":
+                st.success("✅ Identity verified! Set your new password.")
+                new_pw = st.text_input("New password", type="password", placeholder="At least 4 characters", key="new_pw_input")
+                new_pw2 = st.text_input("Confirm new password", type="password", placeholder="Same as above", key="new_pw2_input")
+                if st.button("RESET PASSWORD ➜", key="do_reset_pw", use_container_width=True):
+                    if new_pw != new_pw2:
+                        st.error("❌ Passwords do not match.")
+                    elif len(new_pw) < 4:
+                        st.error("❌ Password must be at least 4 characters.")
+                    else:
+                        ok, msg = reset_password(st.session_state.reset_username, new_pw)
+                        if ok:
+                            st.success("✅ Password reset! You can now log in.")
+                            st.session_state.reset_pw_state = None
+                            st.session_state.reset_username = ""
+                            st.session_state.auth_mode = "login"
+                            st.rerun()
+                        else:
+                            st.error(f"❌ {msg}")
+
+            if st.button("← Back to Login", key="back_to_login", use_container_width=True):
+                st.session_state.auth_mode = "login"
+                st.session_state.reset_pw_state = None
+                st.rerun()
+
+        else:
+            # ── Login / Register tabs ────────────────────────────────────────
+            mode_c1, mode_c2 = st.columns(2)
+            with mode_c1:
+                if st.button("🔑 Log In", key="mode_login", use_container_width=True):
+                    st.session_state.auth_mode = "login"; st.rerun()
+            with mode_c2:
+                if st.button("✨ Register", key="mode_register", use_container_width=True):
+                    st.session_state.auth_mode = "register"; st.rerun()
+
+            st.markdown(f"""<div style="text-align:center;font-family:'Orbitron',sans-serif;
+color:#A78BFA;font-size:.78rem;letter-spacing:.08em;margin:.6rem 0;">
+{'LOG IN TO YOUR ACCOUNT' if st.session_state.auth_mode == "login" else 'CREATE AN ACCOUNT'}</div>""",
+unsafe_allow_html=True)
+
+            if st.session_state.auth_mode == "login":
+                # Login accepts username OR email
+                login_id = st.text_input("Username or Email",
+                    placeholder="Enter your username or email", key="auth_login_id")
+                auth_password = st.text_input("Password", placeholder="Enter your password",
+                    type="password", key="auth_password")
+
+                if st.button("LOG IN ➜", key="login_btn", use_container_width=True):
+                    if login_id.strip() and auth_password.strip():
+                        # Check if it looks like an email
+                        identifier = login_id.strip()
+                        if "@" in identifier:
+                            username_to_try = get_username_by_email(identifier)
+                            if not username_to_try:
+                                st.error("❌ No account found with that email address.")
+                                username_to_try = None
+                        else:
+                            username_to_try = identifier
+                        if username_to_try:
+                            ok, result = login_user(username_to_try, auth_password.strip())
+                            if ok:
+                                st.session_state.username = result
+                                st.rerun()
+                            else:
+                                st.error(f"❌ {result}")
+                    else:
+                        st.warning("Please enter your username/email and password.")
+
+                # Password hint
+                if login_id.strip() and "@" not in login_id:
+                    hint = get_password_hint(login_id.strip())
+                    if hint:
+                        st.markdown(f'<div style="color:#9CA3AF;font-size:.8rem;margin-top:.3rem;">💡 Hint: <em>{hint}</em></div>', unsafe_allow_html=True)
+
+                # Forgot password link
+                st.markdown("")
+                if st.button("Forgot password? Reset via email →", key="goto_reset"):
+                    st.session_state.auth_mode = "reset_pw"
+                    st.session_state.reset_pw_state = None
+                    st.rerun()
+
+            else:
+                # Register — username + password only, email optional later
+                auth_username = st.text_input("Username", placeholder="Choose a unique username", key="auth_username")
+                auth_password_r = st.text_input("Password", placeholder="At least 4 characters",
+                    type="password", key="auth_password_r")
+                auth_hint = st.text_input("Password hint (optional)",
+                    placeholder="Something only you know...", key="auth_hint")
+                st.markdown('<div style="color:#6B7280;font-size:.78rem;margin-top:.2rem;">📧 You can add your email later in your Profile settings to enable password reset.</div>', unsafe_allow_html=True)
+
+                if st.button("CREATE ACCOUNT ➜", key="register_btn", use_container_width=True):
+                    if auth_username.strip() and auth_password_r.strip():
+                        ok, msg = register_user(auth_username.strip(), auth_password_r.strip(),
+                                                auth_hint.strip())
+                        if ok:
+                            st.success("✅ Account created! You can now log in.")
+                            st.session_state.auth_mode = "login"
+                            st.rerun()
+                        else:
+                            st.error(f"❌ {msg}")
+                    else:
+                        st.warning("Please enter both a username and password.")
 
     st.markdown('<hr class="divider">', unsafe_allow_html=True)
 else:
-    # Logged in — show name and logout button
     lc1, lc2 = st.columns([4, 1])
     with lc1:
         st.markdown(f"""<div style="background:linear-gradient(135deg,#1A1A2E,#12122A);
@@ -1041,8 +1134,8 @@ display:flex;gap:2rem;flex-wrap:wrap;align-items:center;">
                     st.rerun()
 
         # Sub-tabs
-        pt1, pt2, pt3, pt4, pt5 = st.tabs(
-            ["🏆 Mastered", "⚡ Active Goals", "🔁 Daily Trackers", "📋 All Quests", "📜 Quest History"])
+        pt1, pt2, pt3, pt4, pt5, pt6 = st.tabs(
+            ["🏆 Mastered", "⚡ Active Goals", "🔁 Daily Trackers", "📋 All Quests", "📜 Quest History", "⚙️ Settings"])
 
         with pt1:
             if not mastered_ps:
@@ -1303,6 +1396,99 @@ border-left:3px solid {dc};">
     <div style="color:#4B5563;font-size:.72rem;">{time_str}</div>
   </div>
 </div>""", unsafe_allow_html=True)
+
+        # ── Settings Tab ─────────────────────────────────────────────────────
+        with pt6:
+            st.markdown("### ⚙️ Account Settings")
+            current_email = get_user_email(st.session_state.username)
+
+            # ── Email section ────────────────────────────────────────────────
+            st.markdown("""<div style="font-family:'Orbitron',sans-serif;color:#A78BFA;
+font-size:.75rem;letter-spacing:.08em;margin-bottom:.8rem;">📧 EMAIL ADDRESS</div>""",
+unsafe_allow_html=True)
+
+            if current_email:
+                st.markdown(f"""<div style="background:#0F2A1A;border:1px solid #1A5A2A;
+border-radius:10px;padding:.8rem 1rem;margin-bottom:.8rem;font-size:.9rem;">
+  ✅ Linked: <strong style="color:#34D399;">{current_email}</strong>
+</div>""", unsafe_allow_html=True)
+                if st.button("Change Email", key="change_email_btn"):
+                    st.session_state.email_verify_state = "enter_new"
+                    st.rerun()
+            else:
+                st.markdown('<div style="color:#9CA3AF;font-size:.85rem;margin-bottom:.6rem;">No email linked. Add one to enable password reset by email.</div>', unsafe_allow_html=True)
+                if st.button("+ Add Email Address", key="add_email_btn"):
+                    st.session_state.email_verify_state = "enter_new"
+                    st.rerun()
+
+            # Email verification flow
+            ev_state = st.session_state.email_verify_state
+            if ev_state == "enter_new":
+                new_email = st.text_input("Email address", placeholder="your@email.com", key="new_email_input")
+                if st.button("SEND VERIFICATION CODE ➜", key="send_email_code", use_container_width=True):
+                    if new_email.strip() and "@" in new_email:
+                        code = generate_code()
+                        store_verification_code(st.session_state.username, code, "verify")
+                        ok, err = send_verification_code(new_email.strip(), code, "verify")
+                        if ok:
+                            st.session_state.pending_email = new_email.strip()
+                            st.session_state.email_verify_state = "code_sent"
+                            st.success(f"✅ Code sent to {new_email.strip()}")
+                            st.rerun()
+                        else:
+                            st.error(f"❌ {err}")
+                    else:
+                        st.warning("Please enter a valid email address.")
+                if st.button("Cancel", key="cancel_email"):
+                    st.session_state.email_verify_state = None
+                    st.rerun()
+
+            elif ev_state == "code_sent":
+                st.success(f"📧 Code sent to {st.session_state.get('pending_email','your email')}. Check your inbox.")
+                entered_code = st.text_input("Enter 6-digit verification code",
+                    placeholder="123456", key="email_verify_code_input", max_chars=6)
+                if st.button("VERIFY & SAVE ➜", key="verify_email_code", use_container_width=True):
+                    ok, msg = verify_code(st.session_state.username, entered_code, "verify")
+                    if ok:
+                        ok2, msg2 = set_user_email(st.session_state.username,
+                                                    st.session_state.get("pending_email",""))
+                        if ok2:
+                            st.session_state.email_verify_state = None
+                            st.session_state.pending_email = ""
+                            st.success("✅ Email verified and linked to your account!")
+                            st.rerun()
+                        else:
+                            st.error(f"❌ {msg2}")
+                    else:
+                        st.error(f"❌ {msg}")
+                if st.button("Cancel", key="cancel_verify"):
+                    st.session_state.email_verify_state = None
+                    st.rerun()
+
+            st.markdown('<hr class="divider">', unsafe_allow_html=True)
+
+            # ── Password change ──────────────────────────────────────────────
+            st.markdown("""<div style="font-family:'Orbitron',sans-serif;color:#A78BFA;
+font-size:.75rem;letter-spacing:.08em;margin-bottom:.8rem;">🔒 CHANGE PASSWORD</div>""",
+unsafe_allow_html=True)
+            with st.form("change_pw_form"):
+                old_pw = st.text_input("Current password", type="password", key="old_pw")
+                new_pw1 = st.text_input("New password", type="password", placeholder="At least 4 characters", key="new_pw1")
+                new_pw2 = st.text_input("Confirm new password", type="password", key="new_pw2")
+                if st.form_submit_button("CHANGE PASSWORD ➜", use_container_width=True):
+                    ok, result = login_user(st.session_state.username, old_pw)
+                    if not ok:
+                        st.error("❌ Current password is incorrect.")
+                    elif new_pw1 != new_pw2:
+                        st.error("❌ New passwords do not match.")
+                    elif len(new_pw1) < 4:
+                        st.error("❌ Password must be at least 4 characters.")
+                    else:
+                        ok2, msg2 = reset_password(st.session_state.username, new_pw1)
+                        if ok2:
+                            st.success("✅ Password changed successfully!")
+                        else:
+                            st.error(f"❌ {msg2}")
 
 # ══════════════════════════════════════════════════════════════════════════════
 # TAB: LEADERBOARD + FEEDBACK

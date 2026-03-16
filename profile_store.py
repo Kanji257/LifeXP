@@ -278,3 +278,92 @@ def get_streak(username: str, skill: str, prompt_id: str) -> dict:
     # Streak is active if checked in today or yesterday
     active = last_date in (today, yesterday)
     return {"count": count, "active": active, "last_date": last_date}
+
+
+def set_user_email(username: str, email: str) -> tuple[bool, str]:
+    """Link an email address to a user account."""
+    all_p = load_all_profiles()
+    matched_key = next((k for k in all_p if k.lower() == username.lower()), None)
+    if not matched_key:
+        return False, "User not found."
+    # Check email not already used by another account
+    for k, p in all_p.items():
+        if k.lower() != username.lower() and p.get("email","").lower() == email.lower():
+            return False, "This email is already linked to another account."
+    all_p[matched_key]["email"] = email.lower().strip()
+    save_all_profiles(all_p)
+    return True, "Email linked successfully."
+
+
+def get_user_email(username: str) -> str:
+    """Get the email address linked to an account."""
+    all_p = load_all_profiles()
+    matched_key = next((k for k in all_p if k.lower() == username.lower()), None)
+    if not matched_key:
+        return ""
+    return all_p[matched_key].get("email", "")
+
+
+def get_username_by_email(email: str) -> str:
+    """Find username by email address. Returns "" if not found."""
+    all_p = load_all_profiles()
+    for k, p in all_p.items():
+        if p.get("email","").lower() == email.lower().strip():
+            return k
+    return ""
+
+
+def store_verification_code(username: str, code: str, purpose: str):
+    """Store a verification code with expiry (10 minutes)."""
+    from datetime import datetime, timedelta
+    all_p = load_all_profiles()
+    matched_key = next((k for k in all_p if k.lower() == username.lower()), None)
+    if not matched_key:
+        return
+    expiry = (datetime.now() + timedelta(minutes=10)).isoformat()
+    all_p[matched_key]["pending_code"] = {
+        "code": code,
+        "purpose": purpose,
+        "expiry": expiry,
+    }
+    save_all_profiles(all_p)
+
+
+def verify_code(username: str, code: str, purpose: str) -> tuple[bool, str]:
+    """
+    Verify a code for a user.
+    Returns (success, message).
+    """
+    from datetime import datetime
+    all_p = load_all_profiles()
+    matched_key = next((k for k in all_p if k.lower() == username.lower()), None)
+    if not matched_key:
+        return False, "User not found."
+    pending = all_p[matched_key].get("pending_code", {})
+    if not pending:
+        return False, "No verification code found. Please request a new one."
+    if pending.get("purpose") != purpose:
+        return False, "Wrong verification code type."
+    if datetime.now().isoformat() > pending.get("expiry", ""):
+        del all_p[matched_key]["pending_code"]
+        save_all_profiles(all_p)
+        return False, "Code has expired. Please request a new one."
+    if pending.get("code") != code.strip():
+        return False, "Incorrect code. Please try again."
+    # Valid — clear the code
+    del all_p[matched_key]["pending_code"]
+    save_all_profiles(all_p)
+    return True, "Code verified."
+
+
+def reset_password(username: str, new_password: str) -> tuple[bool, str]:
+    """Reset a user's password directly (call after verifying code)."""
+    if len(new_password) < 4:
+        return False, "Password must be at least 4 characters."
+    all_p = load_all_profiles()
+    matched_key = next((k for k in all_p if k.lower() == username.lower()), None)
+    if not matched_key:
+        return False, "User not found."
+    all_p[matched_key]["password_hash"] = _hash_password(new_password)
+    save_all_profiles(all_p)
+    return True, "Password reset successfully."
