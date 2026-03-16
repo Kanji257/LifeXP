@@ -370,11 +370,11 @@ def render_prompt_session(sd, chains, xp_t, cids_list, daily_t, daily_c,
                                     if is_live:
                                         st.session_state.completed_ids.add(qid)
                                         add_xp(skill, qxp)
+                                        save_session()  # save first
                                         if st.session_state.username and sid:
                                             log_quest_completion(
                                                 st.session_state.username, sid,
-                                                skill, task, qxp, diff)
-                                        save_session()
+                                                skill, task, qxp, diff)  # log after save
                                     elif past_pid and st.session_state.username:
                                         prof = get_profile(st.session_state.username)
                                         for sess in prof["prompts"]:
