@@ -24,14 +24,31 @@ This project demonstrates:
 
 ## ✨ Features
 
-- **AI Skill Tree** — enter any life goal and GPT-4o-mini builds a focused skill tree
-- **Personalised Quiz** — AI generates questions specific to your goal to tailor difficulty
-- **Quest Chains** — 6 ordered quests per skill, unlocking one at a time from your level
+### Core
+- **AI Skill Tree** — enter any life goal and GPT-4o-mini builds a focused, relevant skill tree
+- **Personalised Quiz** — one question at a time, AI-generated specifically for your goal
+- **Quest Chains** — 6 ordered quests per skill unlocking one at a time, starting at your level
 - **XP & Levelling** — earn XP, level up, track progress across all skills
-- **Mastery System** — complete all quests → unlock a daily habit tracker with infinite XP
-- **User Profiles** — save progress across sessions, view history, open past prompts
-- **AI Chat** — add/remove skills, ask for advice, customise your tree mid-session
+- **Mastery System** — complete all quests to reach Mastery, then unlock a daily habit tracker
+- **Daily Streaks** — 🔥 streak counter tracks consecutive daily habit completions
+- **Interactive Skill Tree** — Plotly-powered, hoverable, zoomable — mastered skills glow gold ⭐
+
+### Profile & Progress
+- **User Accounts** — username + password registration with optional password hint
+- **Profile Dashboard** — level, total XP, goals mastered, XP progress bar
+- **Prompt History** — view and interact with all past goals (mastered and active)
+- **Quest History Log** — full timeline of every completed quest grouped by date
+- **Daily Trackers** — all daily habits grouped by goal with streak counters
+- **Profile Reset** — wipe all data and start fresh
+
+### Social
+- **Leaderboard** — top 10 players ranked by XP with medals and progress bars
 - **Feedback System** — star ratings and public reviews from all users
+
+### UX
+- **Onboarding Walkthrough** — shown once on first login explaining the full system
+- **AI Chat** — add/remove skills, ask for advice, customise your tree mid-session
+- **Graceful Error Handling** — friendly messages for invalid API keys, no credits, etc.
 
 ---
 
@@ -39,7 +56,7 @@ This project demonstrates:
 
 ```bash
 # 1. Clone the repo
-git clone https://github.com/YOUR_USERNAME/lifexp.git
+git clone https://github.com/Kanji257/lifexp.git
 cd lifexp
 
 # 2. Install dependencies
@@ -64,7 +81,8 @@ Get a free key at [platform.openai.com/api-keys](https://platform.openai.com/api
 | Streamlit | Web UI framework |
 | OpenAI GPT-4o-mini | Skill extraction, quest generation, AI chat |
 | NetworkX | Skill tree graph structure |
-| Matplotlib | Skill tree visualisation |
+| Plotly | Interactive skill tree visualisation |
+| Matplotlib | Fallback graph rendering |
 
 ---
 
@@ -72,14 +90,14 @@ Get a free key at [platform.openai.com/api-keys](https://platform.openai.com/api
 
 ```
 lifexp/
-├── app.py            # Main Streamlit app
-├── ai_engine.py      # All OpenAI API calls
-├── skill_tree.py     # Graph building & rendering
-├── icons.py          # Skill → emoji mapping
-├── quests.py         # XP and level utilities
-├── utils.py          # Shared helpers
-├── feedback.py       # Feedback storage
-├── profile_store.py  # User profile persistence
+├── app.py              # Main Streamlit app — UI, tabs, session state
+├── ai_engine.py        # All OpenAI API calls with error handling
+├── skill_tree.py       # Interactive Plotly skill tree rendering
+├── icons.py            # Skill → emoji mapping
+├── profile_store.py    # User accounts, profiles, streaks, quest history
+├── feedback.py         # Feedback storage and retrieval
+├── quests.py           # XP and level utilities
+├── utils.py            # Shared helpers
 └── requirements.txt
 ```
 
@@ -94,9 +112,9 @@ This project was built using what is increasingly called "vibe coding" — direc
 - Identify what breaks, why it breaks, and how to fix it
 - Iterate based on real testing and user feedback
 
-This is a **legitimate and increasingly valued skill set**. The ability to rapidly build, ship, and iterate using AI tools — while still understanding the logic, data flow, and architecture — is exactly what startups and forward-thinking teams are looking for. It demonstrates AI fluency, product thinking, and the ability to turn an idea into a working product quickly.
+This is a **legitimate and increasingly valued skill set**. The ability to rapidly build, ship, and iterate using AI tools — while still understanding the logic, data flow, and architecture — is exactly what startups and forward-thinking teams are looking for.
 
-The challenges encountered and solved in this project included: designing a persistent multi-user profile system, fixing Streamlit's tab rendering limitations, implementing a quest chain unlock system, debugging API authentication flows, and building a real-time XP and levelling system — none of which are trivial regardless of how the code was written.
+The challenges encountered and solved in this project included: designing a persistent multi-user profile system with password hashing, fixing Streamlit's tab rendering limitations, implementing a quest chain unlock system, debugging API authentication flows, building a real-time XP and levelling system, creating an interactive Plotly skill tree, and designing a streak tracking system — none of which are trivial regardless of how the code was written.
 
 ---
 
