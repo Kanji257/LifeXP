@@ -164,6 +164,8 @@ def is_mastered(skill, cids=None, chains=None):
 
 def all_mastered(sd=None, cids=None, chains=None):
     if sd is None: sd = st.session_state.skill_data
+    if cids is None: cids = st.session_state.completed_ids
+    if chains is None: chains = st.session_state.quest_chains
     if not sd: return False
     return all(is_mastered(s, cids, chains) for sks in sd.values() for s in sks)
 
@@ -190,14 +192,22 @@ def save_session():
     daily_checkins = st.session_state.daily_checkins
     if not isinstance(daily_checkins, dict): daily_checkins = {}
     completed_ids = st.session_state.completed_ids
-    if not isinstance(completed_ids, (set, list)): completed_ids = set()
+    if isinstance(completed_ids, list): completed_ids = set(completed_ids)
+    if not isinstance(completed_ids, set): completed_ids = set()
+    # Recompute mastered directly from the data being saved (most reliable)
+    sd = st.session_state.skill_data
+    chains = st.session_state.quest_chains
+    is_now_mastered = bool(sd) and all(
+        bool(chains.get(s)) and all(q["id"] in completed_ids for q in chains.get(s, []))
+        for sks in sd.values() for s in sks
+    ) if sd else False
     add_prompt_session(st.session_state.username, {
         "id": st.session_state.session_id,
         "goal": st.session_state.goal_input,
         "quiz_answers": st.session_state.quiz_answers,
         "user_level": st.session_state.user_level,
-        "skill_data": st.session_state.skill_data,
-        "quest_chains": st.session_state.quest_chains,
+        "skill_data": sd,
+        "quest_chains": chains,
         "daily_tasks": daily_tasks,
         "daily_checkins": daily_checkins,
         "bonus_quests": st.session_state.bonus_quests,
@@ -205,7 +215,7 @@ def save_session():
         "completed_ids": list(completed_ids),
         "created": st.session_state.session_created,
         "last_updated": datetime.now().strftime("%b %d, %Y %H:%M"),
-        "mastered": all_mastered(),
+        "mastered": is_now_mastered,
     })
 
 def apply_chat_action(result):
@@ -299,13 +309,24 @@ def render_prompt_session(sd, chains, xp_t, cids_list, daily_t, daily_c,
 
                 if mastered:
                     daily = daily_t.get(skill)
-                    if not daily and is_live:
+                    if not daily and st.session_state.api_key:
                         with st.spinner(f"Generating daily habit for {skill}..."):
                             daily_r, daily_err = generate_daily_checkin_task(skill, category, quiz_ans, api_key=st.session_state.api_key)
                         if not daily_err and daily_r:
                             daily = daily_r
-                            st.session_state.daily_tasks[skill] = daily
-                            save_session()
+                            if is_live:
+                                st.session_state.daily_tasks[skill] = daily
+                                save_session()
+                            elif past_pid and st.session_state.username:
+                                # Save daily task directly to the profile for past prompts
+                                prof = get_profile(st.session_state.username)
+                                for sess in prof["prompts"]:
+                                    if sess["id"] == past_pid:
+                                        if not isinstance(sess.get("daily_tasks"), dict):
+                                            sess["daily_tasks"] = {}
+                                        sess["daily_tasks"][skill] = daily
+                                        break
+                                save_profile(st.session_state.username, prof)
                     if daily:
                         task_txt = daily["task"] if isinstance(daily, dict) else daily
                         dxp = daily.get("xp", 25) if isinstance(daily, dict) else 25
@@ -745,6 +766,11 @@ with tab_play:
         st.session_state.mastery_shown = True
         st.session_state.mastery_dismissed = False
         save_session()
+    # Also trigger if session was already mastered but celebration never shown
+    elif (st.session_state.generated and all_mastered()
+            and not st.session_state.mastery_shown):
+        st.session_state.mastery_shown = True
+        st.session_state.mastery_dismissed = False
 
     # Show the celebration banner + dismiss button
     if st.session_state.mastery_shown and not st.session_state.mastery_dismissed:
