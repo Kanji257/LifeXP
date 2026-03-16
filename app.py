@@ -979,52 +979,6 @@ display:flex;gap:1.5rem;flex-wrap:wrap;align-items:center;">
         m4.metric("🔁 Daily Streak", daily_total)
         m5.metric("⚡ Level", get_level_info(total_earned)["level"])
 
-        # AI Chat
-        st.markdown('<hr class="divider">', unsafe_allow_html=True)
-        st.markdown("### 💬 Chat with LifeXP AI")
-        st.markdown("*Add or remove skills, ask for advice, or customise your tree.*")
-        st.caption('Try: *"Add a Sleep skill"* · *"Remove Focus"* · *"What should I prioritise first?"*')
-
-        # Render chat history
-        for msg in st.session_state.chat_history:
-            if msg["role"] == "user":
-                st.markdown(f'<div class="chat-user">🧑 {msg["text"]}</div>',
-                            unsafe_allow_html=True)
-            else:
-                st.markdown(f'<div class="chat-ai">🤖 {msg["text"]}</div>',
-                            unsafe_allow_html=True)
-                if msg.get("tree_change"):
-                    st.info(msg["tree_change"])
-
-        # Chat input row
-        chat_col, send_col = st.columns([5, 1])
-        with chat_col:
-            chat_input = st.text_input(
-                "Message",
-                label_visibility="collapsed",
-                placeholder='Type your message here, e.g. "Add a Sleep skill"',
-                key="chat_msg_input")
-        with send_col:
-            send_clicked = st.button("SEND ➜", key="send_chat_btn", use_container_width=True)
-
-        if send_clicked and chat_input.strip():
-            user_msg = chat_input.strip()
-            st.session_state.chat_history.append({"role": "user", "text": user_msg})
-            with st.spinner("🤖 Thinking..."):
-                result, chat_err = chat_modify_tree(user_msg, st.session_state.skill_data,
-                                          st.session_state.goal_input,
-                                          st.session_state.quiz_answers,
-                                          st.session_state.user_level,
-                                          api_key=st.session_state.api_key)
-            if chat_err:
-                result = {"reply": chat_err, "action": "none"}
-            tree_change = apply_chat_action(result) if result.get("action") != "none" else None
-            st.session_state.chat_history.append({
-                "role": "ai", "text": result.get("reply", "Done!"),
-                "tree_change": tree_change})
-            save_session()
-            st.rerun()
-
         st.markdown("<br>", unsafe_allow_html=True)
         rc1, rc2, rc3 = st.columns([1, 2, 1])
         with rc2:
