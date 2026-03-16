@@ -256,7 +256,7 @@ def render_prompt_session(sd, chains, xp_t, cids_list, daily_t, daily_c,
             _done = sum(1 for q in _chain if q["id"] in cids)
             _quest_prog[_s] = (_done, len(_chain))
     fig = render_skill_tree(G, sd, mastered_skills=_mastered_set, quest_progress=_quest_prog)
-    st.plotly_chart(fig, use_container_width=True)
+    st.plotly_chart(fig, use_container_width=True, key=f"skill_tree_{sid or 'live'}")
     st.markdown('<hr class="divider">', unsafe_allow_html=True)
 
     st.markdown("### ⚔️ Quest Chains")
