@@ -263,7 +263,8 @@ def render_prompt_session(sd, chains, xp_t, cids_list, daily_t, daily_c,
             _done = sum(1 for q in _chain if q["id"] in cids)
             _quest_prog[_s] = (_done, len(_chain))
     fig = render_skill_tree(G, sd, mastered_skills=_mastered_set, quest_progress=_quest_prog)
-    st.plotly_chart(fig, use_container_width=True, key=f"skill_tree_{sid or 'live'}")
+    _chart_prefix = "past" if not is_live else "live"
+    st.plotly_chart(fig, use_container_width=True, key=f"skill_tree_{_chart_prefix}_{sid or 'live'}")
     st.markdown('<hr class="divider">', unsafe_allow_html=True)
 
     st.markdown("### ⚔️ Quest Chains")
@@ -365,7 +366,7 @@ def render_prompt_session(sd, chains, xp_t, cids_list, daily_t, daily_c,
 {task}<br>
 <span style="color:#6366F1;font-size:.74rem;">+{qxp} XP</span>
 </div>""", unsafe_allow_html=True)
-                            if st.button(f"Complete +{qxp} XP", key=f"btn_{qid}"):
+                            if st.button(f"Complete +{qxp} XP", key=f"btn_{qid}_{sid or 'live'}"):
                                     if is_live:
                                         st.session_state.completed_ids.add(qid)
                                         add_xp(skill, qxp)
@@ -431,6 +432,45 @@ def render_prompt_session(sd, chains, xp_t, cids_list, daily_t, daily_c,
                                     break
                             save_profile(st.session_state.username, prof)
                         st.rerun()
+
+    # ── AI Chat (live sessions only) ─────────────────────────────────────────
+    if is_live:
+        st.markdown('<hr class="divider">', unsafe_allow_html=True)
+        st.markdown("### 💬 Chat with LifeXP AI")
+        st.markdown("*Add or remove skills, ask for advice, or customise your tree.*")
+        st.caption('Try: *"Add a Sleep skill"* · *"Remove Focus"* · *"What should I prioritise?"*')
+
+        for msg in st.session_state.chat_history:
+            if msg["role"] == "user":
+                st.markdown(f'<div class="chat-user">🧑 {msg["text"]}</div>', unsafe_allow_html=True)
+            else:
+                st.markdown(f'<div class="chat-ai">🤖 {msg["text"]}</div>', unsafe_allow_html=True)
+                if msg.get("tree_change"):
+                    st.info(msg["tree_change"])
+
+        cc1, cc2 = st.columns([5, 1])
+        with cc1:
+            chat_input = st.text_input("chat", label_visibility="collapsed",
+                placeholder='e.g. "Add a Sleep skill" or "Remove Focus"',
+                key=f"chat_input_{sid or 'main'}")
+        with cc2:
+            send_clicked = st.button("SEND ➜", key=f"send_chat_{sid or 'main'}", use_container_width=True)
+
+        if send_clicked and chat_input.strip():
+            st.session_state.chat_history.append({"role": "user", "text": chat_input.strip()})
+            with st.spinner("🤖 Thinking..."):
+                result, chat_err = chat_modify_tree(
+                    chat_input.strip(), st.session_state.skill_data,
+                    st.session_state.goal_input, st.session_state.quiz_answers,
+                    st.session_state.user_level, api_key=st.session_state.api_key)
+            if chat_err:
+                result = {"reply": chat_err, "action": "none"}
+            tree_change = apply_chat_action(result) if result.get("action") != "none" else None
+            st.session_state.chat_history.append({
+                "role": "ai", "text": result.get("reply", "Done!"),
+                "tree_change": tree_change})
+            save_session()
+            st.rerun()
 
 # ══════════════════════════════════════════════════════════════════════════════
 # HEADER
