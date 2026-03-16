@@ -833,7 +833,7 @@ border-radius:16px;padding:2rem 2.5rem;margin-bottom:1.5rem;text-align:center;">
 border-radius:10px;padding:.7rem 1rem;text-align:center;margin-bottom:.4rem;
 font-size:.9rem;color:#E0E0F0;cursor:pointer;">
 {"✓ " if is_selected else ""}{opt}</div>""", unsafe_allow_html=True)
-                        if st.button(opt, key=f"qbtn_{step}_{ci}_{opt[:12]}", use_container_width=True):
+                        if st.button(opt, key=f"qbtn_{step}_{ci}_{row_start}_{hash(opt) % 99999}", use_container_width=True):
                             st.session_state.quiz_answers[question_text] = opt
                             st.session_state.quiz_step = step + 1
                             st.rerun()
