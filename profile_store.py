@@ -104,8 +104,11 @@ def log_quest_completion(username: str, prompt_id: str, skill: str,
                           quest_task: str, xp: int, difficulty: str):
     """Append a quest completion event to the user's history log."""
     all_p = load_all_profiles()
-    if username not in all_p:
+    # Case-insensitive key match
+    matched_key = next((k for k in all_p if k.lower() == username.lower()), None)
+    if not matched_key:
         return
+    username = matched_key
     profile = all_p[username]
     if "quest_history" not in profile:
         profile["quest_history"] = []
@@ -127,9 +130,10 @@ def log_quest_completion(username: str, prompt_id: str, skill: str,
 def get_quest_history(username: str) -> list:
     """Return quest completion history for a user, newest first."""
     all_p = load_all_profiles()
-    if username not in all_p:
+    matched_key = next((k for k in all_p if k.lower() == username.lower()), None)
+    if not matched_key:
         return []
-    return list(reversed(all_p[username].get("quest_history", [])))
+    return list(reversed(all_p[matched_key].get("quest_history", [])))
 
 
 def get_profile(username: str) -> dict:
@@ -171,6 +175,21 @@ def get_all_usernames() -> list:
     return list(load_all_profiles().keys())
 
 
+def _recompute_mastered(p: dict) -> bool:
+    """Recompute mastery from completed_ids vs quest_chains (don't rely on saved flag)."""
+    if p.get("mastered"):
+        return True
+    cids = set(p.get("completed_ids", []))
+    chains = p.get("quest_chains", {})
+    sd = p.get("skill_data", {})
+    if not sd or not cids:
+        return False
+    return all(
+        bool(chains.get(s)) and all(q["id"] in cids for q in chains.get(s, []))
+        for sks in sd.values() for s in sks
+    )
+
+
 def get_leaderboard(limit: int = 10) -> list:
     """
     Return top users sorted by total_xp.
@@ -179,9 +198,12 @@ def get_leaderboard(limit: int = 10) -> list:
     all_p = load_all_profiles()
     board = []
     for username, profile in all_p.items():
+        # Skip system/internal keys
+        if not isinstance(profile, dict) or "created" not in profile:
+            continue
         xp = profile.get("total_xp", 0)
         prompts = profile.get("prompts", [])
-        mastered = sum(1 for p in prompts if p.get("mastered"))
+        mastered = sum(1 for p in prompts if _recompute_mastered(p))
         level = (xp // 200) + 1
         board.append({
             "username": username,

@@ -156,6 +156,21 @@ def all_mastered(sd=None, cids=None, chains=None):
     if not sd: return False
     return all(is_mastered(s, cids, chains) for sks in sd.values() for s in sks)
 
+def _is_prompt_mastered(p: dict) -> bool:
+    """Recompute mastery live from completed_ids vs quest_chains."""
+    if p.get("mastered"):
+        return True
+    cids_p = set(p.get("completed_ids", []))
+    chains_p = p.get("quest_chains", {})
+    sd_p = p.get("skill_data", {})
+    if not sd_p or not cids_p:
+        return False
+    return all(
+        bool(chains_p.get(s)) and all(q["id"] in cids_p for q in chains_p.get(s, []))
+        for sks in sd_p.values() for s in sks
+    )
+
+
 def save_session():
     if not st.session_state.username or not st.session_state.generated: return
     add_prompt_session(st.session_state.username, {
@@ -895,7 +910,8 @@ with tab_profile:
         profile = get_profile(st.session_state.username)
         past = next((p for p in profile["prompts"] if p["id"] == pid), None)
         if past:
-            if past.get("mastered"):
+            if past.get("mastered") or _is_prompt_mastered(past):
+                st.balloons()
                 st.markdown(f"""<div class="mastery-persist">
   <div style="display:flex;align-items:center;gap:1rem;flex-wrap:wrap;">
     <span style="font-size:1.8rem;">🏆</span>
@@ -937,20 +953,6 @@ display:flex;align-items:center;gap:1rem;flex-wrap:wrap;">
     else:
         profile = get_profile(st.session_state.username)
         prompts = profile.get("prompts", [])
-        # Recompute mastered status live from completed_ids vs quest_chains
-        # (in case save_session didn't capture the final state)
-        def _is_prompt_mastered(p):
-            if p.get("mastered"):
-                return True
-            cids_p = set(p.get("completed_ids", []))
-            chains_p = p.get("quest_chains", {})
-            sd_p = p.get("skill_data", {})
-            if not sd_p:
-                return False
-            return all(
-                bool(chains_p.get(s)) and all(q["id"] in cids_p for q in chains_p.get(s, []))
-                for sks in sd_p.values() for s in sks
-            )
         mastered_ps = [p for p in prompts if _is_prompt_mastered(p)]
         active_ps = [p for p in prompts if not _is_prompt_mastered(p)]
         total_xp = profile.get("total_xp", 0)
@@ -1137,6 +1139,20 @@ display:flex;gap:2rem;flex-wrap:wrap;align-items:center;">
 
         with pt3:
             # Check if ANY prompt has daily tasks
+            # Also include current live session daily tasks if logged in
+            if (st.session_state.username and st.session_state.generated
+                    and st.session_state.daily_tasks):
+                # Find if current session is already in prompts
+                current_in_prompts = any(
+                    p["id"] == st.session_state.session_id for p in prompts)
+                if not current_in_prompts:
+                    prompts = list(prompts) + [{
+                        "id": st.session_state.session_id,
+                        "goal": st.session_state.goal_input,
+                        "daily_tasks": st.session_state.daily_tasks,
+                        "daily_checkins": st.session_state.daily_checkins,
+                        "mastered": all_mastered(),
+                    }]
             has_any_daily = any(p.get("daily_tasks") for p in prompts)
             if not has_any_daily:
                 st.markdown("""<div style="text-align:center;padding:2rem;color:#6B7280;">
