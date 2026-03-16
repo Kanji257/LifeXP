@@ -112,13 +112,19 @@ def fresh_session():
         "session_created": datetime.now().strftime("%b %d, %Y"),
         "mastery_shown": False,
         "mastery_dismissed": False,
-        "mastery_celebrated_ids": set(),
+        "mastery_celebrated_ids": [],
         "onboarding_done": False,
     }
 
 for k, v in fresh_session().items():
     if k not in st.session_state:
         st.session_state[k] = v
+
+# Ensure completed_ids is always a set (may be list after JSON round-trip)
+if isinstance(st.session_state.get("completed_ids"), list):
+    st.session_state.completed_ids = set(st.session_state.completed_ids)
+if not isinstance(st.session_state.get("completed_ids"), set):
+    st.session_state.completed_ids = set()
 
 # api_key lives separately — never wiped by fresh_session
 if "api_key" not in st.session_state:
@@ -292,6 +298,7 @@ def render_prompt_session(sd, chains, xp_t, cids_list, daily_t, daily_c,
                                     if st.session_state.username and sid:
                                         update_streak(st.session_state.username, skill, sid)
                                     save_session()
+                                    st.rerun()
                                 elif past_pid and st.session_state.username:
                                     prof = get_profile(st.session_state.username)
                                     for sess in prof["prompts"]:
@@ -329,6 +336,10 @@ def render_prompt_session(sd, chains, xp_t, cids_list, daily_t, daily_c,
                                     if is_live:
                                         st.session_state.completed_ids.add(qid)
                                         add_xp(skill, qxp)
+                                        if st.session_state.username and sid:
+                                            log_quest_completion(
+                                                st.session_state.username, sid,
+                                                skill, task, qxp, diff)
                                         save_session()
                                     elif past_pid and st.session_state.username:
                                         prof = get_profile(st.session_state.username)
@@ -571,7 +582,7 @@ with tab_play:
     sid = st.session_state.session_id
     if (st.session_state.generated and all_mastered()
             and sid not in st.session_state.mastery_celebrated_ids):
-        st.session_state.mastery_celebrated_ids.add(sid)
+        st.session_state.mastery_celebrated_ids.append(sid)
         st.session_state.mastery_shown = True
         st.session_state.mastery_dismissed = False
         save_session()
@@ -638,6 +649,7 @@ with tab_play:
                     for k, v in fresh_session().items():
                         st.session_state[k] = v
                     st.session_state.api_key = saved_key  # preserve key
+                    st.session_state.mastery_celebrated_ids = []  # reset for new session
                     st.session_state.goal_input = goal_input.strip()
                     with st.spinner("🧠 Building your personalised quiz..."):
                         quiz_qs, err = generate_quiz_questions(goal_input.strip(), api_key=st.session_state.api_key)
@@ -925,8 +937,22 @@ display:flex;align-items:center;gap:1rem;flex-wrap:wrap;">
     else:
         profile = get_profile(st.session_state.username)
         prompts = profile.get("prompts", [])
-        mastered_ps = [p for p in prompts if p.get("mastered")]
-        active_ps = [p for p in prompts if not p.get("mastered")]
+        # Recompute mastered status live from completed_ids vs quest_chains
+        # (in case save_session didn't capture the final state)
+        def _is_prompt_mastered(p):
+            if p.get("mastered"):
+                return True
+            cids_p = set(p.get("completed_ids", []))
+            chains_p = p.get("quest_chains", {})
+            sd_p = p.get("skill_data", {})
+            if not sd_p:
+                return False
+            return all(
+                bool(chains_p.get(s)) and all(q["id"] in cids_p for q in chains_p.get(s, []))
+                for sks in sd_p.values() for s in sks
+            )
+        mastered_ps = [p for p in prompts if _is_prompt_mastered(p)]
+        active_ps = [p for p in prompts if not _is_prompt_mastered(p)]
         total_xp = profile.get("total_xp", 0)
         li = get_level_info(total_xp)
 
