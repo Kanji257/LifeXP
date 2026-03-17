@@ -1240,7 +1240,29 @@ display:flex;gap:2rem;flex-wrap:wrap;align-items:center;">
                     btn_c1, btn_c2 = st.columns([3, 1])
                     with btn_c1:
                         if st.button("Open ↗", key=f"open_a_{p['id']}"):
-                            st.session_state.viewing_prompt_id = p["id"]
+                            # Restore full session state so it opens live in Play tab
+                            saved_key = st.session_state.api_key
+                            saved_user = st.session_state.username
+                            for k, v in fresh_session().items():
+                                st.session_state[k] = v
+                            st.session_state.api_key = saved_key
+                            st.session_state.username = saved_user
+                            # Restore all session data from saved prompt
+                            st.session_state.session_id = p["id"]
+                            st.session_state.goal_input = p.get("goal", "")
+                            st.session_state.quiz_answers = p.get("quiz_answers", {})
+                            st.session_state.user_level = p.get("user_level", "Beginner")
+                            st.session_state.skill_data = p.get("skill_data", {})
+                            st.session_state.quest_chains = p.get("quest_chains", {})
+                            st.session_state.daily_tasks = p.get("daily_tasks", {})
+                            st.session_state.daily_checkins = p.get("daily_checkins", {})
+                            st.session_state.bonus_quests = p.get("bonus_quests", [])
+                            st.session_state.xp_tracker = p.get("xp_tracker", {})
+                            st.session_state.completed_ids = set(p.get("completed_ids", []))
+                            st.session_state.session_created = p.get("created", "")
+                            st.session_state.generated = True
+                            st.session_state.quiz_done = True
+                            st.session_state.viewing_prompt_id = None
                             st.rerun()
                     with btn_c2:
                         if st.session_state.confirm_delete_id == p["id"]:
