@@ -1,0 +1,9 @@
+.env
+.DS_Store
+profiles_data.json
+feedback_data.json
+check_data.py
+fix_data.py
+patch_data.py
+__pycache__/
+*.pyc

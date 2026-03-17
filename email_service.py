@@ -13,13 +13,31 @@ from datetime import datetime, timedelta
 
 
 def _get_credentials():
-    """Load Gmail credentials from Streamlit secrets or environment."""
+    """Load Gmail credentials from Streamlit secrets or .env file."""
+    import os
+
+    # 1. Load .env file first (works locally even without python-dotenv)
+    env_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), ".env")
+    if os.path.exists(env_path):
+        with open(env_path) as f:
+            for line in f:
+                line = line.strip()
+                if "=" in line and not line.startswith("#"):
+                    key, _, val = line.partition("=")
+                    os.environ[key.strip()] = val.strip()
+
+    # 2. Try Streamlit secrets (production on Streamlit Cloud)
     try:
         import streamlit as st
-        return st.secrets["GMAIL_ADDRESS"], st.secrets["GMAIL_APP_PASSWORD"]
+        addr = st.secrets.get("GMAIL_ADDRESS", "")
+        pwd = st.secrets.get("GMAIL_APP_PASSWORD", "")
+        if addr and pwd:
+            return addr, pwd
     except Exception:
-        import os
-        return os.environ.get("GMAIL_ADDRESS",""), os.environ.get("GMAIL_APP_PASSWORD","")
+        pass
+
+    # 3. Environment variables (set by .env above or system)
+    return os.environ.get("GMAIL_ADDRESS", ""), os.environ.get("GMAIL_APP_PASSWORD", "")
 
 
 def send_email(to_address: str, subject: str, html_body: str) -> tuple[bool, str]:
